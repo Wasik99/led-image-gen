@@ -5,7 +5,7 @@ Konfigurator przeglądarkowy do tworzenia dekoracyjnych obrazów 3D. Użytkownik
 ## Pierwszy etap
 
 - Dobór kafelków do ręcznie podanego pola roboczego stołu. Wymiary w pełnych milimetrach i minimalny bok kafelka 50 mm. Domyślna propozycja to największy pasujący rozmiar z listy dopuszczalnych boków. Gdy dokładny podział jest niemożliwy, aplikacja pokazuje jedną najbliższą propozycję wymiarów obrazu do zatwierdzenia. Propozycja może przekraczać podany wymiar. Kafelki w obrębie obrazu mają ten sam rozmiar.
-- Kafelki mają kwadratową podstawę o grubości 5 mm. Domyślny wzór to „Gładki”. Opcjonalna „Fala z kwadratów” dodaje siatkę 5 × 5 pól na kafelek. Wysokości od 0 do 14 mm ponad podstawą są obliczane dla całego obrazu. Materiał prototypu to PLA.
+- Kafelki mają kwadratową podstawę o grubości 5 mm. Domyślny wzór to „Gładki”. Opcjonalna „Fala z kwadratów” dodaje siatkę 5 × 5 pól na kafelek. Wysokości są obliczane dla całego obrazu. Można ustawić maksimum od 1 do 30 mm ponad podstawą (domyślnie 14 mm), od 1 do 3 powtórzeń i kierunek poziomy, pionowy lub ukośny. Materiał prototypu to PLA.
 - Podgląd 3D pokazuje całą kompozycję. Eksport to jeden ZIP z osobnym plikiem STL dla każdego kafelka. Nazwa pliku wskazuje jego rząd i kolumnę.
 
 ### Próba prototypu
@@ -14,7 +14,7 @@ Obraz 200 × 200 mm, siatka 2 × 2, cztery kafelki 100 × 100 mm. Sprawdzamy, cz
 
 ## Ustalenia na późniejsze etapy
 
-- Regulacja liczby kwadratów na boku kafelka i maksymalnej wysokości reliefu. Tryb losowy losuje wysokości z ciągłego zakresu i pozwala ponowić losowanie przy zachowaniu ustawień. Tryb fali obejmuje cały obraz i pozwala ustawić jej gęstość oraz kierunek. Podgląd ma odzwierciedlać zmiany na bieżąco i umożliwiać przełączanie obrysów kafelków.
+- Regulacja liczby kwadratów na boku kafelka. Tryb losowy losuje wysokości z ciągłego zakresu i pozwala ponowić losowanie przy zachowaniu ustawień. Podgląd ma odzwierciedlać zmiany na bieżąco i umożliwiać przełączanie obrysów kafelków.
 - Osobno drukowane klipsy PLA do rozłączalnego montażu od tyłu. Klipsy mieszczą się w grubości kafelków, aby obraz przylegał do ściany. Eksport grupuje klipsy na płytach mieszczących się na zadeklarowanym stole i dobiera odstępy.
 - Otwory do zawieszenia w górnym rzędzie. Konfigurator proponuje liczbę i pozycje na podstawie wymiarów oraz orientacji obrazu i pozwala je zmienić w granicach wymaganego minimum. Opcjonalna rama jest osobnym elementem. Oświetlenie pozostaje tematem na później.
 

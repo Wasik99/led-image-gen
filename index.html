@@ -33,6 +33,24 @@
           </div>
           <label class="tile-size">Bok kafelka <select id="tile-size" disabled></select></label>
           <label class="tile-size">Wzór <select id="pattern"></select></label>
+          <fieldset id="wave-settings" hidden>
+            <legend>Ustawienia fali</legend>
+            <label class="wave-range">
+              <span>Maksymalna wysokość <output id="wave-height-value" for="wave-height"></output></span>
+              <input id="wave-height" type="range" min="1" max="30" step="1" />
+            </label>
+            <label class="wave-range">
+              <span>Liczba powtórzeń <output id="wave-density-value" for="wave-density"></output></span>
+              <input id="wave-density" type="range" min="1" max="3" step="1" />
+            </label>
+            <label class="wave-direction">Kierunek
+              <select id="wave-direction">
+                <option value="horizontal">Poziomy</option>
+                <option value="vertical">Pionowy</option>
+                <option value="diagonal">Ukośny</option>
+              </select>
+            </label>
+          </fieldset>
           <p id="error" role="status" hidden></p>
           <div id="suggestion" hidden>
             <p id="suggestion-text" class="hint" role="status"></p>

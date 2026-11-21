@@ -1,5 +1,5 @@
 import { MAX_DIMENSION, MIN_TILE_SIZE } from './layout';
-import { patterns, type PatternId } from './patterns';
+import { defaultWaveSettings, patterns, type PatternId, type WaveSettings } from './patterns';
 
 export const BASE_HEIGHT = 5;
 
@@ -64,15 +64,19 @@ function buildTileMesh(heights: number[][], levels: number[], side: number): Mes
   return { vertices: new Float32Array(vertices), outline: new Float32Array(outline) };
 }
 
-export function generateTiles(width: number, height: number, side: number, pattern: PatternId = 'smooth'): Tile[] {
+export function generateTiles(
+  width: number, height: number, side: number,
+  pattern: PatternId = 'smooth', waveSettings: WaveSettings = defaultWaveSettings,
+): Tile[] {
   if (!Number.isInteger(side) || side < MIN_TILE_SIZE ||
       [width, height].some((size) => size < side || size > MAX_DIMENSION || size % side !== 0)) {
     throw new Error('Wymiary obrazu muszą dzielić się przez bok kafelka.');
   }
 
-  const { cellsPerTile, elevation } = patterns[pattern];
+  const { cellsPerTile, createElevation } = patterns[pattern];
   const columns = width / side;
   const rows = height / side;
+  const elevation = createElevation(columns * cellsPerTile, rows * cellsPerTile, waveSettings);
   const heights = Array.from({ length: rows * cellsPerTile }, (_, y) =>
     Array.from({ length: columns * cellsPerTile }, (_, x) => BASE_HEIGHT + elevation(x, y)),
   );
