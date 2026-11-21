@@ -1,7 +1,7 @@
 import { exportTiles } from './export';
 import { generateTiles, type Tile } from './geometry';
 import { findLayout, type ImageSize } from './layout';
-import { defaultWaveSettings, patterns, type PatternId, type WaveDirection } from './patterns';
+import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type WaveDirection } from './patterns';
 import { createPreview } from './preview';
 import './style.css';
 
@@ -17,6 +17,10 @@ const waveDensity = document.querySelector<HTMLInputElement>('#wave-density')!;
 const waveDirection = document.querySelector<HTMLSelectElement>('#wave-direction')!;
 const waveHeightValue = document.querySelector<HTMLOutputElement>('#wave-height-value')!;
 const waveDensityValue = document.querySelector<HTMLOutputElement>('#wave-density-value')!;
+const randomPanel = document.querySelector<HTMLFieldSetElement>('#random-settings')!;
+const randomHeight = document.querySelector<HTMLInputElement>('#random-height')!;
+const randomHeightValue = document.querySelector<HTMLOutputElement>('#random-height-value')!;
+const reroll = document.querySelector<HTMLButtonElement>('#reroll')!;
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const count = document.querySelector<HTMLElement>('#tile-count')!;
 const info = document.querySelector<HTMLElement>('#preview-info')!;
@@ -26,6 +30,7 @@ const suggestionText = document.querySelector<HTMLElement>('#suggestion-text')!;
 const applySuggestion = document.querySelector<HTMLButtonElement>('#apply-suggestion')!;
 const download = document.querySelector<HTMLButtonElement>('#download')!;
 
+let randomSeed = crypto.getRandomValues(new Uint32Array(1))[0];
 let tiles: Tile[] = [];
 let suggestion: ImageSize | undefined;
 let showTiles: ReturnType<typeof createPreview> | undefined;
@@ -47,10 +52,14 @@ function renderLayout() {
     density: waveDensity.valueAsNumber,
     direction: waveDirection.value as WaveDirection,
   };
+  const random = { maxHeight: randomHeight.valueAsNumber, seed: randomSeed };
+  randomPanel.hidden = pattern !== 'randomSquares';
+  randomHeightValue.value = `${random.maxHeight} mm`;
+  reroll.disabled = !side;
   wavePanel.hidden = pattern !== 'squareWave';
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);
-  tiles = side ? generateTiles(width, height, side, pattern, waveSettings) : [];
+  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random }) : [];
   download.disabled = tiles.length === 0;
   count.textContent = tiles.length ? String(tiles.length) : '—';
   info.textContent = tiles.length
@@ -95,6 +104,12 @@ tileSize.addEventListener('change', renderLayout);
 for (const [id, pattern] of Object.entries(patterns)) {
   patternInput.add(new Option(pattern.label, id));
 }
+randomHeight.value = String(defaultRandomSettings.maxHeight);
+randomHeight.addEventListener('input', renderLayout);
+reroll.addEventListener('click', () => {
+  randomSeed = (randomSeed + 1) >>> 0;
+  renderLayout();
+});
 waveHeight.value = String(defaultWaveSettings.maxHeight);
 waveDensity.value = String(defaultWaveSettings.density);
 waveDirection.value = defaultWaveSettings.direction;
