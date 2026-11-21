@@ -20,6 +20,24 @@ Obraz 200 × 200 mm, siatka 2 × 2, cztery kafelki 100 × 100 mm. Sprawdzamy, cz
 - Osobno drukowane klipsy PLA do rozłączalnego montażu od tyłu. Klipsy mieszczą się w grubości kafelków, aby obraz przylegał do ściany. Eksport grupuje klipsy na płytach mieszczących się na zadeklarowanym stole i dobiera odstępy.
 - Otwory do zawieszenia w górnym rzędzie. Konfigurator proponuje liczbę i pozycje na podstawie wymiarów oraz orientacji obrazu i pozwala je zmienić w granicach wymaganego minimum. Opcjonalna rama jest osobnym elementem. Oświetlenie pozostaje tematem na później.
 
+## Uruchomienie prototypu
+
+Wymagany jest Node.js 24. W katalogu repozytorium uruchom:
+
+```sh
+npm ci
+npm run dev
+```
+
+Otwórz adres podany przez Vite. Po zapisaniu zmian w kodzie Vite odświeży podgląd. Komenda `npm run build` sprawdza TypeScript i buduje wersję do publikacji w katalogu `dist/`.
+
+## Gdzie edytować kod
+
+- `src/geometry.ts` definiuje rozmiar kafelka, grubość podstawy i wzór. Geometria jest wspólna dla podglądu i eksportu.
+- `src/preview.ts` ustawia kamerę, oświetlenie i obracanie obrazu w Three.js.
+- `src/export.ts` tworzy modele STL i archiwum ZIP.
+- `index.html`, `src/main.ts` i `src/style.css` odpowiadają za pola wymiarów, reakcję na zmiany i wygląd strony.
+
 ## Wznowienie pracy
 
-Projekt jest na etapie założeń. Następna decyzja to wybór technologii podglądu 3D i generowania geometrii do STL, w tym ustalenie, czy modele powstają w przeglądarce, czy na serwerze. Punktem odniesienia przy tym wyborze jest próba 200 × 200 mm opisana wyżej.
+Prototyp generuje modele w przeglądarce. Przyjęto stały bok kafelka 100 mm, siatkę 5 × 5 kwadratów na kafelek i wymiary obrazu od 100 do 2000 mm na oś, z krokiem 100 mm. Na pierwszy test fizyczny pobierz ZIP dla obrazu 200 × 200 mm i sprawdź złożenie czterech wydruków PLA.

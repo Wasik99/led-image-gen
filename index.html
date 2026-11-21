@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#151718" />
+    <title>Konfigurator reliefu 3D</title>
+  </head>
+  <body>
+    <header class="site-header"><span class="brand-mark" aria-hidden="true"></span> led-image-gen</header>
+    <main>
+      <h1>Konfigurator reliefu 3D</h1>
+      <p class="intro">Dopasuj rozmiar obrazu i pobierz kafelki do wydruku.</p>
+      <div class="workspace">
+        <section class="preview panel" aria-labelledby="preview-title">
+          <div class="preview-bar">
+            <h2 id="preview-title">Podgląd 3D</h2>
+            <span>Przeciągnij, aby obrócić</span>
+          </div>
+          <div id="viewport"></div>
+          <div id="preview-info" class="preview-info"></div>
+        </section>
+        <section class="settings panel" aria-labelledby="size-title">
+          <h2 id="size-title">Wymiary obrazu</h2>
+          <div class="inputs">
+            <label>Szerokość <span class="measurement"><input id="width" type="number" value="200" min="100" max="2000" step="100" required /><span>mm</span></span></label>
+            <label>Wysokość <span class="measurement"><input id="height" type="number" value="200" min="100" max="2000" step="100" required /><span>mm</span></span></label>
+          </div>
+          <p class="hint">Wymiary muszą być wielokrotnością 100 mm.</p>
+          <p id="error" role="status" hidden></p>
+          <dl>
+            <div><dt>Bok kafelka</dt><dd>100 mm</dd></div>
+            <div><dt>Grubość podstawy</dt><dd>5 mm</dd></div>
+            <div><dt>Liczba kafelków</dt><dd id="tile-count">4</dd></div>
+          </dl>
+          <button id="download" type="button">Pobierz ZIP z modelami STL <span aria-hidden="true">↓</span></button>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
