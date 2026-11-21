@@ -1,4 +1,4 @@
-import { boardScale, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceKind } from './custom-layout';
+import { boardScale, connectedPieces, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -9,6 +9,9 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const marker = board.querySelector<SVGCircleElement>('circle')!;
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
+  const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
+  const railCount = panel.querySelector<HTMLInputElement>('#piece-rail-count')!;
+  const groupSize = panel.querySelector<HTMLElement>('#piece-group-size')!;
   const palette = [...panel.querySelectorAll<HTMLButtonElement>('[data-piece-kind]')];
   const pieces: LayoutPiece[] = [];
   let width = 100;
@@ -16,21 +19,24 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   let nextId = 0;
   let selected: LayoutPiece | undefined;
   let joint: BoardPoint | undefined;
-  let dragging: { pointerId: number; offset: BoardPoint } | undefined;
+  let dragging: { pointerId: number; offset: BoardPoint; dimensions: PieceDimensions } | undefined;
 
   function render() {
     drawing.replaceChildren();
+    const groupPieces = selected ? connectedPieces(selected, pieces) : [];
+    const connected = new Set(groupPieces);
     for (const piece of pieces) {
       const group = document.createElementNS(svgNamespace, 'g');
       group.dataset.piece = String(piece.id);
       group.classList.toggle('selected', piece === selected);
-      group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90})`);
+      group.classList.toggle('connected', connected.has(piece));
+      group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${piece.size})`);
       const hitArea = document.createElementNS(svgNamespace, 'path');
       hitArea.classList.add('piece-hit-area');
       hitArea.setAttribute('d', railPath(piece.kind));
-      hitArea.setAttribute('stroke-width', String(pieceHitWidth));
+      hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
       group.append(hitArea);
-      for (const path of railPaths(piece.kind)) {
+      for (const path of railPaths(piece)) {
         const rail = document.createElementNS(svgNamespace, 'path');
         rail.classList.add('piece-rail');
         rail.setAttribute('d', path);
@@ -43,7 +49,10 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       marker.setAttribute('cx', String(joint.x));
       marker.setAttribute('cy', String(joint.y));
     }
-    rotate.disabled = remove.disabled = !selected;
+    rotate.disabled = remove.disabled = size.disabled = railCount.disabled = !selected;
+    size.value = selected ? String(Math.round(selected.size * 100)) : '';
+    railCount.value = selected ? String(selected.railCount) : '';
+    groupSize.textContent = groupPieces.length > 1 ? `Elementy w połączonej grupie: ${groupPieces.length}` : '';
     for (const button of palette) button.disabled = pieces.length >= pieceLimit;
   }
 
@@ -57,14 +66,14 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     piece.y = Math.max(0, Math.min(height, point.y));
     const snap = snapPiece(piece, pieces, width, height);
     joint = snap?.joint;
-    if (snap) Object.assign(piece, snap.point);
+    if (snap) Object.assign(piece, snap.point, snap.dimensions);
     render();
     onChange();
   }
 
   function add(kind: PieceKind, point: BoardPoint) {
     if (pieces.length >= pieceLimit) return;
-    selected = { id: nextId++, kind, rotation: 0, ...point };
+    selected = { id: nextId++, kind, rotation: 0, size: 1, railCount: 5, ...point };
     pieces.push(selected);
     move(selected, point);
   }
@@ -97,7 +106,11 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     joint = undefined;
     if (selected) {
       const point = boardPoint(event);
-      dragging = { pointerId: event.pointerId, offset: { x: point.x - selected.x, y: point.y - selected.y } };
+      dragging = {
+        pointerId: event.pointerId,
+        offset: { x: point.x - selected.x, y: point.y - selected.y },
+        dimensions: { size: selected.size, railCount: selected.railCount },
+      };
       board.setPointerCapture(event.pointerId);
     }
     render();
@@ -105,11 +118,37 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   board.addEventListener('pointermove', (event) => {
     if (!selected || dragging?.pointerId !== event.pointerId) return;
     const point = boardPoint(event);
+    Object.assign(selected, dragging.dimensions);
     move(selected, { x: point.x - dragging.offset.x, y: point.y - dragging.offset.y });
   });
   board.addEventListener('lostpointercapture', (event) => {
     if (dragging?.pointerId === event.pointerId) dragging = undefined;
   });
+
+  function updateDimensions() {
+    if (!selected) return;
+    if (!size.checkValidity() || !railCount.checkValidity()) {
+      render();
+      return;
+    }
+    const newSize = size.valueAsNumber / 100;
+    const newRailCount = railCount.valueAsNumber;
+    const group = connectedPieces(selected, pieces);
+    const factor = newSize / selected.size;
+    const anchor = { x: selected.x, y: selected.y };
+    for (const piece of group) {
+      piece.x = anchor.x + (piece.x - anchor.x) * factor;
+      piece.y = anchor.y + (piece.y - anchor.y) * factor;
+      piece.size = newSize;
+      piece.railCount = newRailCount;
+    }
+    joint = undefined;
+    render();
+    onChange();
+  }
+
+  size.addEventListener('change', updateDimensions);
+  railCount.addEventListener('change', updateDimensions);
 
   rotate.addEventListener('click', () => {
     if (!selected) return;
@@ -129,7 +168,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     const scale = boardScale(imageWidth, imageHeight);
     const nextWidth = imageWidth / scale;
     const nextHeight = imageHeight / scale;
-    if (width !== nextWidth || height !== nextHeight) joint = undefined;
+    if (width === nextWidth && height === nextHeight) return;
+    joint = undefined;
     width = nextWidth;
     height = nextHeight;
     board.setAttribute('viewBox', `0 0 ${width} ${height}`);

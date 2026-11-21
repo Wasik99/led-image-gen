@@ -1,6 +1,11 @@
 export type PieceKind = 'straight' | 'corner';
 export interface BoardPoint { x: number; y: number }
-export interface LayoutPiece extends BoardPoint {
+export interface PieceDimensions {
+  size: number;
+  railCount: number;
+}
+
+export interface LayoutPiece extends BoardPoint, PieceDimensions {
   id: number;
   kind: PieceKind;
   rotation: number;
@@ -8,7 +13,7 @@ export interface LayoutPiece extends BoardPoint {
 
 const straightHalfLength = 15;
 const radius = 16;
-const railOffsets = [-7, -3.5, 0, 3.5, 7];
+const railSpacing = 3.5;
 const railHalfWidth = 1.2;
 const snapDistance = 4;
 
@@ -25,7 +30,13 @@ export function boardScale(width: number, height: number) {
   return Math.min(width, height) / 100;
 }
 
-export const pieceHitWidth = 2 * (Math.max(...railOffsets) + railHalfWidth);
+function railOffsets(count: number) {
+  return Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * railSpacing);
+}
+
+export function pieceHitWidth(count: number) {
+  return (count - 1) * railSpacing + 2 * railHalfWidth;
+}
 
 export function railPath(kind: PieceKind, offset = 0): string {
   const railRadius = radius + offset;
@@ -34,8 +45,8 @@ export function railPath(kind: PieceKind, offset = 0): string {
     : `M ${8 - railRadius} 8 A ${railRadius} ${railRadius} 0 0 1 8 ${8 - railRadius}`;
 }
 
-export function railPaths(kind: PieceKind): string[] {
-  return railOffsets.map(offset => railPath(kind, offset));
+export function railPaths(piece: LayoutPiece): string[] {
+  return railOffsets(piece.railCount).map(offset => railPath(piece.kind, offset));
 }
 
 function rotate(point: BoardPoint, turn: number): BoardPoint {
@@ -48,24 +59,60 @@ function rotate(point: BoardPoint, turn: number): BoardPoint {
   }
 }
 
+function pieceEndpoints(piece: LayoutPiece): Endpoint[] {
+  return endpoints[piece.kind].map(end => {
+    const offset = rotate(end, piece.rotation);
+    return {
+      x: piece.x + offset.x * piece.size,
+      y: piece.y + offset.y * piece.size,
+      heading: (end.heading + piece.rotation) % 4,
+    };
+  });
+}
+
+function faceEachOther(a: Endpoint, b: Endpoint) {
+  return (a.heading + 2) % 4 === b.heading;
+}
+
+export function connectedPieces(selected: LayoutPiece, pieces: LayoutPiece[]): LayoutPiece[] {
+  const group = [selected];
+  const added = new Set(group);
+  for (const piece of group) {
+    const ends = pieceEndpoints(piece);
+    for (const other of pieces) {
+      if (added.has(other) || other.size !== piece.size || other.railCount !== piece.railCount) continue;
+      if (pieceEndpoints(other).some(target => ends.some(end =>
+        faceEachOther(end, target) && Math.hypot(end.x - target.x, end.y - target.y) < 1e-6,
+      ))) {
+        group.push(other);
+        added.add(other);
+      }
+    }
+  }
+  return group;
+}
+
 export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: number, height: number) {
-  let best: { point: BoardPoint; joint: BoardPoint } | undefined;
+  let best: { point: BoardPoint; joint: BoardPoint; dimensions: PieceDimensions } | undefined;
   let bestDistance = snapDistance;
-  for (const end of endpoints[piece.kind]) {
-    const relative = rotate(end, piece.rotation);
-    const heading = (end.heading + piece.rotation) % 4;
-    for (const other of others) {
-      if (other.id === piece.id) continue;
-      for (const target of endpoints[other.kind]) {
-        if ((target.heading + other.rotation + 2) % 4 !== heading) continue;
-        const otherEnd = rotate(target, other.rotation);
-        const joint = { x: other.x + otherEnd.x, y: other.y + otherEnd.y };
-        const point = { x: joint.x - relative.x, y: joint.y - relative.y };
+  const originalEnds = pieceEndpoints(piece);
+  for (const other of others) {
+    if (other.id === piece.id) continue;
+    const dimensions = { size: other.size, railCount: other.railCount };
+    const adjustedEnds = pieceEndpoints({ ...piece, ...dimensions });
+    for (const joint of pieceEndpoints(other)) {
+      for (const [index, end] of adjustedEnds.entries()) {
+        if (!faceEachOther(end, joint)) continue;
+        const point = { x: piece.x + joint.x - end.x, y: piece.y + joint.y - end.y };
         if (point.x < 0 || point.y < 0 || point.x > width || point.y > height) continue;
-        const distance = Math.hypot(point.x - piece.x, point.y - piece.y);
+        const original = originalEnds[index];
+        const distance = Math.min(
+          Math.hypot(end.x - joint.x, end.y - joint.y),
+          Math.hypot(original.x - joint.x, original.y - joint.y),
+        );
         if (distance < bestDistance) {
           bestDistance = distance;
-          best = { point, joint };
+          best = { point, joint, dimensions };
         }
       }
     }
@@ -73,7 +120,7 @@ export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: numb
   return best;
 }
 
-function reliefForPiece(kind: PieceKind, x: number, y: number): number {
+function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[]): number {
   const distanceToRail = kind === 'straight'
     ? (offset: number) => Math.hypot(Math.max(0, Math.abs(x) - straightHalfLength), y - offset)
     : (offset: number) => {
@@ -85,22 +132,27 @@ function reliefForPiece(kind: PieceKind, x: number, y: number): number {
     };
 
   let distance = railHalfWidth;
-  for (const offset of railOffsets) distance = Math.min(distance, distanceToRail(offset));
+  for (const offset of offsets) distance = Math.min(distance, distanceToRail(offset));
   return distance < railHalfWidth ? 4 * (1 + Math.cos(Math.PI * distance / railHalfWidth)) : 0;
 }
 
 export function createLayoutSurface(width: number, height: number, pieces: readonly LayoutPiece[]) {
   const scale = boardScale(width, height);
+  const prepared = pieces.map(piece => ({
+    piece,
+    offsets: railOffsets(piece.railCount),
+    extent: (Math.max(straightHalfLength, 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth) * piece.size,
+  }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
     const y = (height - sampleY) / scale;
     let elevation = 0;
-    for (const piece of pieces) {
+    for (const { piece, offsets, extent } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
-      if (Math.abs(dx) > 17 || Math.abs(dy) > 17) continue;
+      if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
-      elevation = Math.max(elevation, reliefForPiece(piece.kind, local.x, local.y));
+      elevation = Math.max(elevation, reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets));
     }
     return elevation;
   };

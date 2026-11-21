@@ -101,6 +101,12 @@ select:focus-visible { outline: 2px solid var(--accent); }
 }
 #layout-editor path { fill: none; cursor: move; }
 #layout-editor .piece-rail { stroke: #c2b29d; stroke-width: 2.4; }
+#layout-editor .connected .piece-rail { stroke: #dcaa72; }
 #layout-editor .selected .piece-rail { stroke: var(--accent); }
 #layout-editor .piece-hit-area { stroke: transparent; pointer-events: stroke; }
 #layout-editor .snap-marker { fill: #90dad0; pointer-events: none; }
+
+.piece-settings { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 14px; margin-top: 10px; }
+.piece-settings label { display: grid; gap: 3px; }
+.piece-settings input { width: 86px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+.piece-settings input:focus-visible { outline: 2px solid var(--accent); }
