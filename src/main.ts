@@ -1,6 +1,7 @@
 import { exportTiles } from './export';
 import { generateTiles, type Tile } from './geometry';
 import { findLayout, type ImageSize } from './layout';
+import { patterns, type PatternId } from './patterns';
 import { createPreview } from './preview';
 import './style.css';
 
@@ -9,6 +10,7 @@ const heightInput = document.querySelector<HTMLInputElement>('#height')!;
 const bedWidthInput = document.querySelector<HTMLInputElement>('#bed-width')!;
 const bedHeightInput = document.querySelector<HTMLInputElement>('#bed-height')!;
 const tileSize = document.querySelector<HTMLSelectElement>('#tile-size')!;
+const patternInput = document.querySelector<HTMLSelectElement>('#pattern')!;
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const count = document.querySelector<HTMLElement>('#tile-count')!;
 const info = document.querySelector<HTMLElement>('#preview-info')!;
@@ -33,7 +35,7 @@ function renderLayout() {
   const width = widthInput.valueAsNumber;
   const height = heightInput.valueAsNumber;
   const side = Number(tileSize.value);
-  tiles = side ? generateTiles(width, height, side) : [];
+  tiles = side ? generateTiles(width, height, side, patternInput.value as PatternId) : [];
   download.disabled = tiles.length === 0;
   count.textContent = tiles.length ? String(tiles.length) : '—';
   info.textContent = tiles.length
@@ -75,6 +77,10 @@ for (const input of [widthInput, heightInput, bedWidthInput, bedHeightInput]) {
   input.addEventListener('input', update);
 }
 tileSize.addEventListener('change', renderLayout);
+for (const [id, pattern] of Object.entries(patterns)) {
+  patternInput.add(new Option(pattern.label, id));
+}
+patternInput.addEventListener('change', renderLayout);
 applySuggestion.addEventListener('click', () => {
   if (!suggestion) return;
   widthInput.value = String(suggestion.width);

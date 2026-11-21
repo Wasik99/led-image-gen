@@ -1,9 +1,9 @@
 import {
-  AmbientLight, BufferAttribute, BufferGeometry, Color, DirectionalLight, Group, LineBasicMaterial, LineLoop, Mesh,
-  MeshStandardMaterial, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
+  AmbientLight, BufferAttribute, BufferGeometry, Color, DirectionalLight, Group, LineBasicMaterial, LineSegments, Mesh,
+  MeshStandardMaterial, PerspectiveCamera, Scene, WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { BASE_HEIGHT, type Tile } from './geometry';
+import type { Tile } from './geometry';
 
 export function createPreview(viewport: HTMLElement) {
   const renderer = new WebGLRenderer({ antialias: true });
@@ -45,30 +45,17 @@ export function createPreview(viewport: HTMLElement) {
   resize.observe(viewport);
 
   const material = new MeshStandardMaterial({ color: '#c2b29d', roughness: 0.86 });
-  const outlineHeight = BASE_HEIGHT + 0.05;
   const outlineMaterial = new LineBasicMaterial({ color: '#786b5b' });
-  const meshes: Mesh[] = [];
-  let outline: BufferGeometry | undefined;
+  const geometries: BufferGeometry[] = [];
 
   return function showTiles(tiles: Tile[], width: number, height: number, side: number) {
-    for (const mesh of meshes) {
-      art.remove(mesh);
-      mesh.geometry.dispose();
-    }
-    meshes.length = 0;
-    outline?.dispose();
-    outline = undefined;
+    art.clear();
+    for (const geometry of geometries) geometry.dispose();
+    geometries.length = 0;
     if (!tiles.length) {
       render();
       return;
     }
-
-    outline = new BufferGeometry().setFromPoints([
-      new Vector3(0, 0, outlineHeight),
-      new Vector3(side, 0, outlineHeight),
-      new Vector3(side, side, outlineHeight),
-      new Vector3(0, side, outlineHeight),
-    ]);
 
     for (const tile of tiles) {
       const geometry = new BufferGeometry();
@@ -76,8 +63,10 @@ export function createPreview(viewport: HTMLElement) {
       geometry.computeVertexNormals();
       const mesh = new Mesh(geometry, material);
       mesh.position.set(tile.column * side - width / 2, height / 2 - (tile.row + 1) * side, 0);
-      mesh.add(new LineLoop(outline, outlineMaterial));
-      meshes.push(mesh);
+      const outline = new BufferGeometry();
+      outline.setAttribute('position', new BufferAttribute(tile.outline, 3));
+      mesh.add(new LineSegments(outline, outlineMaterial));
+      geometries.push(geometry, outline);
       art.add(mesh);
     }
 
