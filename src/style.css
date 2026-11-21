@@ -61,3 +61,9 @@ button:focus-visible { outline: 2px solid white; outline-offset: 3px; }
   main { padding: 32px 16px; }
   .workspace { grid-template-columns: minmax(0, 1fr); }
 }
+.settings-heading { margin-top: 20px; }
+.tile-size { display: grid; gap: 6px; margin-top: 20px; }
+select { width: 100%; padding: 10px; color: inherit; background: #151718; border: 1px solid var(--line); border-radius: 7px; font: inherit; }
+select:focus-visible { outline: 2px solid var(--accent); }
+#apply-suggestion { margin-top: 8px; background: #34393a; color: #f0ece5; }
+#apply-suggestion:hover { background: #414849; }

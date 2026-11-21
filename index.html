@@ -23,17 +23,25 @@
         <section class="settings panel" aria-labelledby="size-title">
           <h2 id="size-title">Wymiary obrazu</h2>
           <div class="inputs">
-            <label>Szerokość <span class="measurement"><input id="width" type="number" value="200" min="100" max="2000" step="100" required /><span>mm</span></span></label>
-            <label>Wysokość <span class="measurement"><input id="height" type="number" value="200" min="100" max="2000" step="100" required /><span>mm</span></span></label>
+            <label>Szerokość <span class="measurement"><input id="width" type="number" value="200" min="1" max="2000" step="1" required /><span>mm</span></span></label>
+            <label>Wysokość <span class="measurement"><input id="height" type="number" value="200" min="1" max="2000" step="1" required /><span>mm</span></span></label>
           </div>
-          <p class="hint">Wymiary muszą być wielokrotnością 100 mm.</p>
+          <h2 class="settings-heading">Pole robocze stołu</h2>
+          <div class="inputs">
+            <label>Szerokość stołu <span class="measurement"><input id="bed-width" type="number" value="180" min="1" step="1" required /><span>mm</span></span></label>
+            <label>Głębokość stołu <span class="measurement"><input id="bed-height" type="number" value="180" min="1" step="1" required /><span>mm</span></span></label>
+          </div>
+          <label class="tile-size">Bok kafelka <select id="tile-size" disabled></select></label>
           <p id="error" role="status" hidden></p>
+          <div id="suggestion" hidden>
+            <p id="suggestion-text" class="hint" role="status"></p>
+            <button id="apply-suggestion" type="button">Zastosuj proponowane wymiary</button>
+          </div>
           <dl>
-            <div><dt>Bok kafelka</dt><dd>100 mm</dd></div>
             <div><dt>Grubość podstawy</dt><dd>5 mm</dd></div>
             <div><dt>Liczba kafelków</dt><dd id="tile-count">4</dd></div>
           </dl>
-          <button id="download" type="button">Pobierz ZIP z modelami STL <span aria-hidden="true">↓</span></button>
+          <button id="download" type="button" disabled>Pobierz ZIP z modelami STL <span aria-hidden="true">↓</span></button>
         </section>
       </div>
     </main>

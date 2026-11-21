@@ -3,7 +3,7 @@ import {
   MeshStandardMaterial, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { BASE_HEIGHT, TILE_SIZE, type Tile } from './geometry';
+import { BASE_HEIGHT, type Tile } from './geometry';
 
 export function createPreview(viewport: HTMLElement) {
   const renderer = new WebGLRenderer({ antialias: true });
@@ -46,28 +46,36 @@ export function createPreview(viewport: HTMLElement) {
 
   const material = new MeshStandardMaterial({ color: '#c2b29d', roughness: 0.86 });
   const outlineHeight = BASE_HEIGHT + 0.05;
-  const outline = new BufferGeometry().setFromPoints([
-    new Vector3(0, 0, outlineHeight),
-    new Vector3(TILE_SIZE, 0, outlineHeight),
-    new Vector3(TILE_SIZE, TILE_SIZE, outlineHeight),
-    new Vector3(0, TILE_SIZE, outlineHeight),
-  ]);
   const outlineMaterial = new LineBasicMaterial({ color: '#786b5b' });
   const meshes: Mesh[] = [];
+  let outline: BufferGeometry | undefined;
 
-  return function showTiles(tiles: Tile[], width: number, height: number) {
+  return function showTiles(tiles: Tile[], width: number, height: number, side: number) {
     for (const mesh of meshes) {
       art.remove(mesh);
       mesh.geometry.dispose();
     }
     meshes.length = 0;
+    outline?.dispose();
+    outline = undefined;
+    if (!tiles.length) {
+      render();
+      return;
+    }
+
+    outline = new BufferGeometry().setFromPoints([
+      new Vector3(0, 0, outlineHeight),
+      new Vector3(side, 0, outlineHeight),
+      new Vector3(side, side, outlineHeight),
+      new Vector3(0, side, outlineHeight),
+    ]);
 
     for (const tile of tiles) {
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new BufferAttribute(tile.vertices, 3));
       geometry.computeVertexNormals();
       const mesh = new Mesh(geometry, material);
-      mesh.position.set(tile.column * TILE_SIZE - width / 2, height / 2 - (tile.row + 1) * TILE_SIZE, 0);
+      mesh.position.set(tile.column * side - width / 2, height / 2 - (tile.row + 1) * side, 0);
       mesh.add(new LineLoop(outline, outlineMaterial));
       meshes.push(mesh);
       art.add(mesh);
