@@ -13,7 +13,8 @@ export function createPreview(viewport: HTMLElement) {
   const scene = new Scene();
   scene.background = new Color('#202426');
   const art = new Group();
-  scene.add(art, new AmbientLight('#e4e9ed', 1.35));
+  const outlines = new Group();
+  scene.add(art, outlines, new AmbientLight('#e4e9ed', 1.35));
 
   const key = new DirectionalLight('#fff0db', 2.8);
   key.position.set(-2, 3, 2.5);
@@ -48,8 +49,9 @@ export function createPreview(viewport: HTMLElement) {
   const outlineMaterial = new LineBasicMaterial({ color: '#786b5b' });
   const geometries: BufferGeometry[] = [];
 
-  return function showTiles(tiles: Tile[], width: number, height: number, side: number) {
+  function showTiles(tiles: Tile[], width: number, height: number, side: number) {
     art.clear();
+    outlines.clear();
     for (const geometry of geometries) geometry.dispose();
     geometries.length = 0;
     if (!tiles.length) {
@@ -65,7 +67,9 @@ export function createPreview(viewport: HTMLElement) {
       mesh.position.set(tile.column * side - width / 2, height / 2 - (tile.row + 1) * side, 0);
       const outline = new BufferGeometry();
       outline.setAttribute('position', new BufferAttribute(tile.outline, 3));
-      mesh.add(new LineSegments(outline, outlineMaterial));
+      const lines = new LineSegments(outline, outlineMaterial);
+      lines.position.copy(mesh.position);
+      outlines.add(lines);
       geometries.push(geometry, outline);
       art.add(mesh);
     }
@@ -77,4 +81,11 @@ export function createPreview(viewport: HTMLElement) {
     controls.update();
     render();
   };
+
+  function setOutlinesVisible(visible: boolean) {
+    outlines.visible = visible;
+    render();
+  }
+
+  return { showTiles, setOutlinesVisible };
 }

@@ -21,6 +21,7 @@ const randomPanel = document.querySelector<HTMLFieldSetElement>('#random-setting
 const randomHeight = document.querySelector<HTMLInputElement>('#random-height')!;
 const randomHeightValue = document.querySelector<HTMLOutputElement>('#random-height-value')!;
 const reroll = document.querySelector<HTMLButtonElement>('#reroll')!;
+const hideDivision = document.querySelector<HTMLInputElement>('#hide-division')!;
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const count = document.querySelector<HTMLElement>('#tile-count')!;
 const info = document.querySelector<HTMLElement>('#preview-info')!;
@@ -33,13 +34,15 @@ const download = document.querySelector<HTMLButtonElement>('#download')!;
 let randomSeed = crypto.getRandomValues(new Uint32Array(1))[0];
 let tiles: Tile[] = [];
 let suggestion: ImageSize | undefined;
-let showTiles: ReturnType<typeof createPreview> | undefined;
+let preview: ReturnType<typeof createPreview> | undefined;
 
 try {
-  showTiles = createPreview(viewport);
+  preview = createPreview(viewport);
+  preview.setOutlinesVisible(!hideDivision.checked);
 } catch {
   viewport.textContent = 'Podgląd 3D wymaga przeglądarki z obsługą WebGL.';
   viewport.classList.add('unavailable');
+  hideDivision.disabled = true;
 }
 
 function renderLayout() {
@@ -65,7 +68,7 @@ function renderLayout() {
   info.textContent = tiles.length
     ? `${width} × ${height} mm · Siatka ${width / side} × ${height / side}`
     : 'Brak podziału dla bieżących wymiarów.';
-  showTiles?.(tiles, width, height, side);
+  preview?.showTiles(tiles, width, height, side);
 }
 
 function update() {
@@ -101,6 +104,9 @@ for (const input of [widthInput, heightInput, bedWidthInput, bedHeightInput]) {
   input.addEventListener('input', update);
 }
 tileSize.addEventListener('change', renderLayout);
+hideDivision.addEventListener('change', () => {
+  preview?.setOutlinesVisible(!hideDivision.checked);
+});
 for (const [id, pattern] of Object.entries(patterns)) {
   patternInput.add(new Option(pattern.label, id));
 }
