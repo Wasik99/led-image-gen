@@ -20,6 +20,7 @@ export interface RandomSettings {
 export interface PatternSettings {
   wave: WaveSettings;
   random: RandomSettings;
+  grooves?: boolean;
 }
 
 export const defaultRandomSettings: RandomSettings = { maxHeight: 14, seed: 1 };

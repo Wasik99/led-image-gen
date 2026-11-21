@@ -2,6 +2,7 @@ import { MAX_DIMENSION, MIN_TILE_SIZE } from './layout';
 import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type PatternSettings } from './patterns';
 
 export const BASE_HEIGHT = 5;
+const GROOVE_BEVEL = 0.4;
 
 export interface Tile {
   row: number;
@@ -12,13 +13,20 @@ export interface Tile {
 
 type MeshData = Pick<Tile, 'vertices' | 'outline'>;
 
-function buildTileMesh(heights: number[][], side: number): MeshData {
+type Point = [number, number, number];
+
+function buildTileMesh(heights: number[][], side: number, bevel = 0): MeshData {
   const vertices: number[] = [];
   const outline: number[] = [];
   const cells = heights.length;
+  const rimHeights = bevel ? heights.map((row) => row.map((z) => z - bevel)) : heights;
+
+  function quad(a: Point, b: Point, c: Point, d: Point) {
+    vertices.push(...a, ...b, ...c, ...a, ...c, ...d);
+  }
 
   function cornerLevels(x: number, y: number, low: number, high: number) {
-    const adjacent = [heights[y - 1]?.[x - 1], heights[y - 1]?.[x], heights[y]?.[x - 1], heights[y]?.[x]];
+    const adjacent = [rimHeights[y - 1]?.[x - 1], rimHeights[y - 1]?.[x], rimHeights[y]?.[x - 1], rimHeights[y]?.[x]];
     const levels = adjacent.filter((z): z is number => z !== undefined && low < z && z < high);
     return [...new Set(levels)].sort((a, b) => a - b).concat(high);
   }
@@ -61,21 +69,34 @@ function buildTileMesh(heights: number[][], side: number): MeshData {
       const bottom = y * side / cells;
       const top = (y + 1) * side / cells;
       const z = heights[y][x];
-      vertices.push(
-        left, bottom, z, right, bottom, z, right, top, z,
-        left, bottom, z, right, top, z, left, top, z,
-        left, bottom, 0, left, top, 0, right, top, 0,
-        left, bottom, 0, right, top, 0, right, bottom, 0,
-      );
-      wall(x, y, x + 1, y, heights[y - 1]?.[x] ?? 0, z);
-      wall(x + 1, y, x + 1, y + 1, heights[y][x + 1] ?? 0, z);
-      wall(x + 1, y + 1, x, y + 1, heights[y + 1]?.[x] ?? 0, z);
-      wall(x, y + 1, x, y, heights[y][x - 1] ?? 0, z);
+      const edgeZ = rimHeights[y][x];
+      const a: Point = [left + bevel, bottom + bevel, z];
+      const b: Point = [right - bevel, bottom + bevel, z];
+      const c: Point = [right - bevel, top - bevel, z];
+      const d: Point = [left + bevel, top - bevel, z];
+      quad(a, b, c, d);
+      quad([left, bottom, 0], [left, top, 0], [right, top, 0], [right, bottom, 0]);
 
-      if (y === 0) rim(left, bottom, right, bottom, z);
-      if (x === cells - 1) rim(right, bottom, right, top, z);
-      if (y === cells - 1) rim(right, top, left, top, z);
-      if (x === 0) rim(left, top, left, bottom, z);
+      if (bevel) {
+        const lowerLeft: Point = [left, bottom, edgeZ];
+        const lowerRight: Point = [right, bottom, edgeZ];
+        const upperRight: Point = [right, top, edgeZ];
+        const upperLeft: Point = [left, top, edgeZ];
+        quad(lowerLeft, lowerRight, b, a);
+        quad(lowerRight, upperRight, c, b);
+        quad(upperRight, upperLeft, d, c);
+        quad(upperLeft, lowerLeft, a, d);
+      }
+
+      wall(x, y, x + 1, y, rimHeights[y - 1]?.[x] ?? 0, edgeZ);
+      wall(x + 1, y, x + 1, y + 1, rimHeights[y][x + 1] ?? 0, edgeZ);
+      wall(x + 1, y + 1, x, y + 1, rimHeights[y + 1]?.[x] ?? 0, edgeZ);
+      wall(x, y + 1, x, y, rimHeights[y][x - 1] ?? 0, edgeZ);
+
+      if (y === 0) rim(left, bottom, right, bottom, edgeZ);
+      if (x === cells - 1) rim(right, bottom, right, top, edgeZ);
+      if (y === cells - 1) rim(right, top, left, top, edgeZ);
+      if (x === 0) rim(left, top, left, bottom, edgeZ);
     }
   }
 
@@ -100,6 +121,7 @@ export function generateTiles(
     Array.from({ length: columns * cellsPerTile }, (_, x) => Math.fround(BASE_HEIGHT + elevation(x, y))),
   );
   const flatMesh = cellsPerTile === 1 ? buildTileMesh([[BASE_HEIGHT]], side) : undefined;
+  const bevel = settings.grooves ? GROOVE_BEVEL : 0;
   const tiles: Tile[] = [];
 
   for (let row = 0; row < rows; row++) {
@@ -108,7 +130,7 @@ export function generateTiles(
     for (let column = 0; column < columns; column++) {
       const startX = column * cellsPerTile;
       const mesh = flatMesh ?? buildTileMesh(
-        tileRows.map((line) => line.slice(startX, startX + cellsPerTile)), side,
+        tileRows.map((line) => line.slice(startX, startX + cellsPerTile)), side, bevel,
       );
       tiles.push({ row, column, ...mesh });
     }

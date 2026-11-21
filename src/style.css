@@ -76,6 +76,8 @@ select:focus-visible { outline: 2px solid var(--accent); }
 .wave-range input { margin: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
 .wave-range input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .preview-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 14px; }
-.preview-controls label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
-.preview-controls input { width: auto; margin: 0; accent-color: var(--accent); cursor: pointer; }
-.preview-controls input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.preview-controls label, .groove-option label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.preview-controls input, .groove-option input { width: auto; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.preview-controls input:focus-visible, .groove-option input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.groove-option { margin-top: 12px; }
