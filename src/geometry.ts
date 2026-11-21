@@ -2,7 +2,7 @@ import { MAX_DIMENSION, MIN_TILE_SIZE } from './layout';
 import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type PatternSettings } from './patterns';
 
 export const BASE_HEIGHT = 5;
-const GROOVE_BEVEL = 0.4;
+const GROOVE_BEVEL = 0.6;
 
 export interface Tile {
   row: number;

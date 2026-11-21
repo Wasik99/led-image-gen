@@ -6,7 +6,7 @@ Konfigurator przeglądarkowy do tworzenia dekoracyjnych obrazów 3D. Użytkownik
 
 - Dobór kafelków do ręcznie podanego pola roboczego stołu. Wymiary w pełnych milimetrach i minimalny bok kafelka 50 mm. Domyślna propozycja to największy pasujący rozmiar z listy dopuszczalnych boków. Gdy dokładny podział jest niemożliwy, aplikacja pokazuje jedną najbliższą propozycję wymiarów obrazu do zatwierdzenia. Propozycja może przekraczać podany wymiar. Kafelki w obrębie obrazu mają ten sam rozmiar.
 - Kafelki mają kwadratową podstawę o grubości 5 mm. Domyślny wzór to „Gładki”. Opcjonalna „Fala z kwadratów” dodaje siatkę 5 × 5 pól na kafelek. Wysokości są obliczane dla całego obrazu. Można ustawić maksimum od 1 do 30 mm ponad podstawą (domyślnie 14 mm), od 1 do 3 powtórzeń i kierunek poziomy, pionowy lub ukośny. „Losowe kwadraty” mają 5 × 5 pól na kafelek i losują wysokości z ciągłego zakresu od 0 do ustawionego maksimum. Przycisk „Losuj ponownie” zmienia układ, zachowując pozostałe ustawienia. Materiał prototypu to PLA.
-- Dla obu wzorów z kwadratami opcja „Delikatne rowki” ścina górne krawędzie o 0,4 mm. Na styku pól o tej samej wysokości powstaje rowek o szerokości 0,8 mm. W najniższych rowkach grubość wynosi 4,6 mm.
+- Dla obu wzorów z kwadratami opcja „Delikatne rowki” ścina górne krawędzie o 0,6 mm. Na styku pól o tej samej wysokości powstaje rowek o szerokości 1,2 mm. W najniższych rowkach grubość wynosi 4,4 mm.
 - Podgląd 3D pokazuje całą kompozycję. Pole „Ukryj podział” przełącza obrysy kafelków. Eksport to jeden ZIP z osobnym plikiem STL dla każdego kafelka. Nazwa pliku wskazuje jego rząd i kolumnę.
 
 ### Próba prototypu
