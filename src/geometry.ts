@@ -3,15 +3,18 @@ import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, t
 
 export const BASE_HEIGHT = 5;
 const GROOVE_BEVEL = 0.6;
+const SURFACE_STEPS_SHORT_SIDE = 280;
+const SURFACE_CELL_BUDGET = 320_000;
 
 export interface Tile {
   row: number;
   column: number;
   vertices: Float32Array;
   outline: Float32Array;
+  normals?: Float32Array;
 }
 
-type MeshData = Pick<Tile, 'vertices' | 'outline'>;
+type MeshData = Pick<Tile, 'vertices' | 'outline' | 'normals'>;
 
 type Point = [number, number, number];
 
@@ -104,18 +107,52 @@ function buildTileMesh(heights: number[][], side: number, bevel = 0): MeshData {
 }
 
 function buildContinuousMesh(side: number, steps: number, sample: (x: number, y: number) => number): MeshData {
-  const vertices: number[] = [];
+  const coordinateCount = (2 * steps ** 2 + 12 * steps) * 9;
+  const vertices = new Float32Array(coordinateCount);
+  const normals = new Float32Array(coordinateCount);
   const outline: number[] = [];
-  const points = Array.from({ length: steps + 1 }, (_, y) =>
-    Array.from({ length: steps + 1 }, (_, x): Point => [x * side / steps, y * side / steps, sample(x, y)]),
+  let offset = 0;
+  const spacing = side / steps;
+  // Sample one extra row and column on all sides for consistent normals across tile seams.
+  const heights = Array.from({ length: steps + 3 }, (_, y) =>
+    Float64Array.from({ length: steps + 3 }, (_, x) => sample(x - 1, y - 1)),
   );
-  const floorCenter: Point = [side / 2, side / 2, 0];
+  const points: Point[][] = [];
+  const topNormals: Point[][] = [];
+  for (let y = 0; y <= steps; y++) {
+    const pointRow: Point[] = [];
+    const normalRow: Point[] = [];
+    for (let x = 0; x <= steps; x++) {
+      pointRow.push([x * side / steps, y * side / steps, heights[y + 1][x + 1]]);
+      const dx = heights[y + 1][x] - heights[y + 1][x + 2];
+      const dy = heights[y][x + 1] - heights[y + 2][x + 1];
+      const dz = 2 * spacing;
+      const length = Math.hypot(dx, dy, dz);
+      normalRow.push([dx / length, dy / length, dz / length]);
+    }
+    points.push(pointRow);
+    topNormals.push(normalRow);
+  }
 
-  function closeEdge(a: Point, b: Point) {
+  const floorCenter: Point = [side / 2, side / 2, 0];
+  const down: Point = [0, 0, -1];
+
+  function triangle(a: Point, b: Point, c: Point, na: Point, nb = na, nc = na) {
+    vertices.set(a, offset);
+    vertices.set(b, offset + 3);
+    vertices.set(c, offset + 6);
+    normals.set(na, offset);
+    normals.set(nb, offset + 3);
+    normals.set(nc, offset + 6);
+    offset += 9;
+  }
+
+  function closeEdge(a: Point, b: Point, outward: Point) {
     const bottomA: Point = [a[0], a[1], 0];
     const bottomB: Point = [b[0], b[1], 0];
-    vertices.push(...bottomA, ...bottomB, ...b, ...bottomA, ...b, ...a);
-    vertices.push(...floorCenter, ...bottomB, ...bottomA);
+    triangle(bottomA, bottomB, b, outward);
+    triangle(bottomA, b, a, outward);
+    triangle(floorCenter, bottomB, bottomA, down);
     outline.push(a[0], a[1], a[2] + 0.05, b[0], b[1], b[2] + 0.05);
   }
 
@@ -125,18 +162,23 @@ function buildContinuousMesh(side: number, steps: number, sample: (x: number, y:
       const b = points[y][x + 1];
       const c = points[y + 1][x + 1];
       const d = points[y + 1][x];
-      vertices.push(...a, ...b, ...c, ...a, ...c, ...d);
+      const na = topNormals[y][x];
+      const nb = topNormals[y][x + 1];
+      const nc = topNormals[y + 1][x + 1];
+      const nd = topNormals[y + 1][x];
+      triangle(a, b, c, na, nb, nc);
+      triangle(a, c, d, na, nc, nd);
     }
   }
 
   for (let i = 0; i < steps; i++) {
-    closeEdge(points[0][i], points[0][i + 1]);
-    closeEdge(points[i][steps], points[i + 1][steps]);
-    closeEdge(points[steps][i + 1], points[steps][i]);
-    closeEdge(points[i + 1][0], points[i][0]);
+    closeEdge(points[0][i], points[0][i + 1], [0, -1, 0]);
+    closeEdge(points[i][steps], points[i + 1][steps], [1, 0, 0]);
+    closeEdge(points[steps][i + 1], points[steps][i], [0, 1, 0]);
+    closeEdge(points[i + 1][0], points[i][0], [-1, 0, 0]);
   }
 
-  return { vertices: new Float32Array(vertices), outline: new Float32Array(outline) };
+  return { vertices, normals, outline: new Float32Array(outline) };
 }
 
 export function generateTiles(
@@ -155,8 +197,10 @@ export function generateTiles(
   let buildMesh: (column: number, rowFromBottom: number) => MeshData;
 
   if ('createSurface' in surface) {
-    // Sample at a consistent resolution across each seam, even on rectangular compositions.
-    const steps = Math.ceil(84 * side / Math.min(width, height));
+    const targetSteps = Math.ceil(SURFACE_STEPS_SHORT_SIDE * side / Math.min(width, height));
+    // Keep a common spacing across seams and bound mesh size for very long panels.
+    const maxSteps = Math.floor(Math.sqrt(SURFACE_CELL_BUDGET / (columns * rows)));
+    const steps = Math.min(targetSteps, maxSteps);
     const sample = surface.createSurface(width, height, settings);
     buildMesh = (column, row) => buildContinuousMesh(side, steps, (x, y) => {
       const globalX = (column * steps + x) * side / steps;

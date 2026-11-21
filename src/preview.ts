@@ -62,7 +62,11 @@ export function createPreview(viewport: HTMLElement) {
     for (const tile of tiles) {
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new BufferAttribute(tile.vertices, 3));
-      geometry.computeVertexNormals();
+      if (tile.normals) {
+        geometry.setAttribute('normal', new BufferAttribute(tile.normals, 3));
+      } else {
+        geometry.computeVertexNormals();
+      }
       const mesh = new Mesh(geometry, material);
       mesh.position.set(tile.column * side - width / 2, height / 2 - (tile.row + 1) * side, 0);
       const outline = new BufferGeometry();
