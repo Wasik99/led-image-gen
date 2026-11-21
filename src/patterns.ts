@@ -17,10 +17,28 @@ export interface RandomSettings {
   seed: number;
 }
 
+export const archRoutes = {
+  u: 'Łuk U',
+  corner: 'Zakręt 90°',
+  s: 'Eska',
+  horizontal: 'Pasy poziome',
+  vertical: 'Pasy pionowe',
+};
+
+export interface ArchSettings {
+  route: keyof typeof archRoutes;
+  rotation: number;
+  shiftX: number;
+  shiftY: number;
+}
+
+export const defaultArchSettings: ArchSettings = { route: 'u', rotation: 0, shiftX: 0, shiftY: 0 };
+
 export interface PatternSettings {
   wave: WaveSettings;
   random: RandomSettings;
   grooves?: boolean;
+  arches?: ArchSettings;
 }
 
 export const defaultRandomSettings: RandomSettings = { maxHeight: 14, seed: 1 };
@@ -100,20 +118,68 @@ function createRandomSquares(columns: number, rows: number, settings: RandomSett
 
 interface ContinuousPattern {
   label: string;
-  elevationAt: (x: number, y: number, width: number, height: number) => number;
+  createSurface: (width: number, height: number, settings: PatternSettings) => (x: number, y: number) => number;
 }
 
-function parallelArches(x: number, y: number, width: number, height: number): number {
+function quarterArcDistance(x: number, y: number, radius: number): number {
+  if (x >= 0 && y >= 0) return Math.abs(Math.hypot(x, y) - radius);
+  return Math.min(Math.hypot(x - radius, y), Math.hypot(x, y - radius));
+}
+
+function distanceFromRoute(route: ArchSettings['route'], x: number, y: number, halfHeight: number) {
+  switch (route) {
+    case 'u':
+      return Math.hypot(x, Math.max(0, y + 0.04 * halfHeight));
+    case 'corner': {
+      const radius = 0.25;
+      return Math.min(
+        quarterArcDistance(radius - x, y + radius, radius),
+        Math.hypot(x, Math.max(0, y + radius)),
+        Math.hypot(Math.max(0, radius - x), y),
+      );
+    }
+    case 's': {
+      const radius = 0.21;
+      return Math.min(
+        quarterArcDistance(-x, y + radius, radius),
+        quarterArcDistance(x, radius - y, radius),
+        Math.hypot(x + radius, Math.max(0, y + radius)),
+        Math.hypot(x - radius, Math.max(0, radius - y)),
+      );
+    }
+    case 'horizontal':
+      return Math.abs(y);
+    case 'vertical':
+      return Math.abs(x);
+  }
+}
+
+function createParallelArches(width: number, height: number, { arches = defaultArchSettings }: PatternSettings) {
+  const { route, rotation, shiftX, shiftY } = arches;
   const scale = Math.min(width, height);
-  // Distance from a downward ray gives straight legs and a semicircular crown.
-  const distance = Math.hypot(x - width / 2, Math.max(0, y - height * 0.48)) / scale;
-  const firstRadius = 0.10;
+  const angle = rotation * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const originX = width * (0.5 + shiftX / 100);
+  const originY = height * (0.5 + shiftY / 100);
+  const halfHeight = (rotation % 180 === 0 ? height : width) / (2 * scale);
   const spacing = 0.07;
   const halfWidth = 0.024;
-  const rib = Math.round((distance - firstRadius) / spacing);
-  const offset = Math.abs(distance - (firstRadius + rib * spacing));
-  if (rib < 0 || rib >= 5 || offset >= halfWidth) return 0;
-  return 4 * (1 + Math.cos(Math.PI * offset / halfWidth));
+  const firstRadius = route === 'u' ? 0.10 : 0;
+  const lastRib = route === 'u' ? 4 : 2;
+  const repeats = route === 'horizontal' || route === 'vertical';
+
+  return (x: number, y: number) => {
+    const dx = (x - originX) / scale;
+    const dy = (y - originY) / scale;
+    const localX = dx * cos - dy * sin;
+    const localY = dx * sin + dy * cos;
+    const distance = distanceFromRoute(route, localX, localY, halfHeight);
+    const rib = Math.round((distance - firstRadius) / spacing);
+    const offset = Math.abs(distance - (firstRadius + rib * spacing));
+    if (rib < 0 || (!repeats && rib > lastRib) || offset >= halfWidth) return 0;
+    return 4 * (1 + Math.cos(Math.PI * offset / halfWidth));
+  };
 }
 
 export const patterns = {
@@ -134,7 +200,7 @@ export const patterns = {
   },
   parallelArches: {
     label: 'Równoległe łuki',
-    elevationAt: parallelArches,
+    createSurface: createParallelArches,
   },
 } satisfies Record<string, SteppedPattern | ContinuousPattern>;
 

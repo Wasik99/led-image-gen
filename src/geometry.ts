@@ -154,13 +154,14 @@ export function generateTiles(
   const rows = height / side;
   let buildMesh: (column: number, rowFromBottom: number) => MeshData;
 
-  if ('elevationAt' in surface) {
+  if ('createSurface' in surface) {
     // Sample at a consistent resolution across each seam, even on rectangular compositions.
     const steps = Math.ceil(84 * side / Math.min(width, height));
+    const sample = surface.createSurface(width, height, settings);
     buildMesh = (column, row) => buildContinuousMesh(side, steps, (x, y) => {
       const globalX = (column * steps + x) * side / steps;
       const globalY = (row * steps + y) * side / steps;
-      return BASE_HEIGHT + surface.elevationAt(globalX, globalY, width, height);
+      return BASE_HEIGHT + sample(globalX, globalY);
     });
   } else if (pattern === 'smooth') {
     const mesh = buildTileMesh([[BASE_HEIGHT]], side);

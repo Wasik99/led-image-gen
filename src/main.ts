@@ -1,7 +1,7 @@
 import { exportTiles } from './export';
 import { generateTiles, type Tile } from './geometry';
 import { findLayout, type ImageSize } from './layout';
-import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type WaveDirection } from './patterns';
+import { archRoutes, defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type WaveDirection } from './patterns';
 import { createPreview } from './preview';
 import './style.css';
 
@@ -24,6 +24,13 @@ const randomHeight = document.querySelector<HTMLInputElement>('#random-height')!
 const randomHeightValue = document.querySelector<HTMLOutputElement>('#random-height-value')!;
 const reroll = document.querySelector<HTMLButtonElement>('#reroll')!;
 const hideDivision = document.querySelector<HTMLInputElement>('#hide-division')!;
+const archPanel = document.querySelector<HTMLFieldSetElement>('#arch-settings')!;
+const archRoute = document.querySelector<HTMLSelectElement>('#arch-route')!;
+const archRotation = document.querySelector<HTMLSelectElement>('#arch-rotation')!;
+const archShiftX = document.querySelector<HTMLInputElement>('#arch-shift-x')!;
+const archShiftY = document.querySelector<HTMLInputElement>('#arch-shift-y')!;
+const archShiftXValue = document.querySelector<HTMLOutputElement>('#arch-shift-x-value')!;
+const archShiftYValue = document.querySelector<HTMLOutputElement>('#arch-shift-y-value')!;
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const count = document.querySelector<HTMLElement>('#tile-count')!;
 const info = document.querySelector<HTMLElement>('#preview-info')!;
@@ -58,6 +65,15 @@ function renderLayout() {
     direction: waveDirection.value as WaveDirection,
   };
   const random = { maxHeight: randomHeight.valueAsNumber, seed: randomSeed };
+  const arches = {
+    route: archRoute.value as keyof typeof archRoutes,
+    rotation: Number(archRotation.value),
+    shiftX: archShiftX.valueAsNumber,
+    shiftY: archShiftY.valueAsNumber,
+  };
+  archPanel.hidden = pattern !== 'parallelArches';
+  archShiftXValue.value = `${arches.shiftX}%`;
+  archShiftYValue.value = `${arches.shiftY}%`;
   randomPanel.hidden = pattern !== 'randomSquares';
   randomHeightValue.value = `${random.maxHeight} mm`;
   reroll.disabled = !side;
@@ -65,7 +81,7 @@ function renderLayout() {
   wavePanel.hidden = pattern !== 'squareWave';
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);
-  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, grooves: grooves.checked }) : [];
+  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, arches, grooves: grooves.checked }) : [];
   download.disabled = tiles.length === 0;
   count.textContent = tiles.length ? String(tiles.length) : '—';
   info.textContent = tiles.length
@@ -122,6 +138,13 @@ reroll.addEventListener('click', () => {
 waveHeight.value = String(defaultWaveSettings.maxHeight);
 waveDensity.value = String(defaultWaveSettings.density);
 waveDirection.value = defaultWaveSettings.direction;
+for (const [id, label] of Object.entries(archRoutes)) {
+  archRoute.add(new Option(label, id));
+}
+archRoute.addEventListener('change', renderLayout);
+archRotation.addEventListener('change', renderLayout);
+archShiftX.addEventListener('input', renderLayout);
+archShiftY.addEventListener('input', renderLayout);
 patternInput.addEventListener('change', renderLayout);
 grooves.addEventListener('change', renderLayout);
 waveHeight.addEventListener('input', renderLayout);
