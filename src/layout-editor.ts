@@ -1,4 +1,4 @@
-import { boardScale, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceKind } from './custom-layout';
+import { boardScale, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -25,8 +25,14 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       group.dataset.piece = String(piece.id);
       group.classList.toggle('selected', piece === selected);
       group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90})`);
+      const hitArea = document.createElementNS(svgNamespace, 'path');
+      hitArea.classList.add('piece-hit-area');
+      hitArea.setAttribute('d', railPath(piece.kind));
+      hitArea.setAttribute('stroke-width', String(pieceHitWidth));
+      group.append(hitArea);
       for (const path of railPaths(piece.kind)) {
         const rail = document.createElementNS(svgNamespace, 'path');
+        rail.classList.add('piece-rail');
         rail.setAttribute('d', path);
         group.append(rail);
       }

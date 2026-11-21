@@ -25,10 +25,17 @@ export function boardScale(width: number, height: number) {
   return Math.min(width, height) / 100;
 }
 
-export function railPaths(kind: PieceKind): string[] {
-  return railOffsets.map(offset => kind === 'straight'
+export const pieceHitWidth = 2 * (Math.max(...railOffsets) + railHalfWidth);
+
+export function railPath(kind: PieceKind, offset = 0): string {
+  const railRadius = radius + offset;
+  return kind === 'straight'
     ? `M -${straightHalfLength} ${offset} H ${straightHalfLength}`
-    : `M ${8 - radius - offset} 8 A ${radius + offset} ${radius + offset} 0 0 1 8 ${8 - radius - offset}`);
+    : `M ${8 - railRadius} 8 A ${railRadius} ${railRadius} 0 0 1 8 ${8 - railRadius}`;
+}
+
+export function railPaths(kind: PieceKind): string[] {
+  return railOffsets.map(offset => railPath(kind, offset));
 }
 
 function rotate(point: BoardPoint, turn: number): BoardPoint {

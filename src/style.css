@@ -99,6 +99,8 @@ select:focus-visible { outline: 2px solid var(--accent); }
   touch-action: none;
   user-select: none;
 }
-#layout-editor path { fill: none; stroke: #c2b29d; stroke-width: 2.4; cursor: move; }
-#layout-editor .selected path { stroke: var(--accent); }
+#layout-editor path { fill: none; cursor: move; }
+#layout-editor .piece-rail { stroke: #c2b29d; stroke-width: 2.4; }
+#layout-editor .selected .piece-rail { stroke: var(--accent); }
+#layout-editor .piece-hit-area { stroke: transparent; pointer-events: stroke; }
 #layout-editor .snap-marker { fill: #90dad0; pointer-events: none; }
