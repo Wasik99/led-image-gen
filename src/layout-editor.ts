@@ -2,9 +2,21 @@ import { boardScale, connectedPieces, pieceHitWidth, railPath, railPaths, snapPi
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
+const boardPadding = 3;
+
+interface DragState {
+  pointerId: number;
+  offset: BoardPoint;
+  dimensions: PieceDimensions;
+  group: { piece: LayoutPiece; origin: BoardPoint }[];
+  minDelta: BoardPoint;
+  maxDelta: BoardPoint;
+}
 
 export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const board = panel.querySelector<SVGSVGElement>('svg')!;
+  const boundary = board.querySelector<SVGRectElement>('rect')!;
+  const moveConnected = panel.querySelector<HTMLInputElement>('#move-connected')!;
   const drawing = board.querySelector<SVGGElement>('g')!;
   const marker = board.querySelector<SVGCircleElement>('circle')!;
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
@@ -19,7 +31,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   let nextId = 0;
   let selected: LayoutPiece | undefined;
   let joint: BoardPoint | undefined;
-  let dragging: { pointerId: number; offset: BoardPoint; dimensions: PieceDimensions } | undefined;
+  let dragging: DragState | undefined;
 
   function render() {
     drawing.replaceChildren();
@@ -106,10 +118,21 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     joint = undefined;
     if (selected) {
       const point = boardPoint(event);
+      const group = (moveConnected.checked ? connectedPieces(selected, pieces) : [selected])
+        .map(piece => ({ piece, origin: { x: piece.x, y: piece.y } }));
       dragging = {
         pointerId: event.pointerId,
         offset: { x: point.x - selected.x, y: point.y - selected.y },
         dimensions: { size: selected.size, railCount: selected.railCount },
+        group,
+        minDelta: {
+          x: Math.min(0, -Math.min(...group.map(({ origin }) => origin.x))),
+          y: Math.min(0, -Math.min(...group.map(({ origin }) => origin.y))),
+        },
+        maxDelta: {
+          x: Math.max(0, width - Math.max(...group.map(({ origin }) => origin.x))),
+          y: Math.max(0, height - Math.max(...group.map(({ origin }) => origin.y))),
+        },
       };
       board.setPointerCapture(event.pointerId);
     }
@@ -118,8 +141,22 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   board.addEventListener('pointermove', (event) => {
     if (!selected || dragging?.pointerId !== event.pointerId) return;
     const point = boardPoint(event);
-    Object.assign(selected, dragging.dimensions);
-    move(selected, { x: point.x - dragging.offset.x, y: point.y - dragging.offset.y });
+    const destination = { x: point.x - dragging.offset.x, y: point.y - dragging.offset.y };
+    if (dragging.group.length === 1) {
+      Object.assign(selected, dragging.dimensions);
+      move(selected, destination);
+      return;
+    }
+
+    const anchor = dragging.group[0].origin;
+    const dx = Math.max(dragging.minDelta.x, Math.min(dragging.maxDelta.x, destination.x - anchor.x));
+    const dy = Math.max(dragging.minDelta.y, Math.min(dragging.maxDelta.y, destination.y - anchor.y));
+    for (const { piece, origin } of dragging.group) {
+      piece.x = origin.x + dx;
+      piece.y = origin.y + dy;
+    }
+    render();
+    onChange();
   });
   board.addEventListener('lostpointercapture', (event) => {
     if (dragging?.pointerId === event.pointerId) dragging = undefined;
@@ -172,8 +209,12 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     joint = undefined;
     width = nextWidth;
     height = nextHeight;
-    board.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    board.style.aspectRatio = `${width} / ${height}`;
+    const paddedWidth = width + 2 * boardPadding;
+    const paddedHeight = height + 2 * boardPadding;
+    board.setAttribute('viewBox', `${-boardPadding} ${-boardPadding} ${paddedWidth} ${paddedHeight}`);
+    board.style.aspectRatio = `${paddedWidth} / ${paddedHeight}`;
+    boundary.setAttribute('width', String(width));
+    boundary.setAttribute('height', String(height));
     render();
   }
 
