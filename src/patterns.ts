@@ -27,7 +27,7 @@ export const defaultRandomSettings: RandomSettings = { maxHeight: 14, seed: 1 };
 
 type Elevation = (column: number, row: number) => number;
 
-interface SurfacePattern {
+interface SteppedPattern {
   label: string;
   cellsPerTile: number;
   createElevation: (columns: number, rows: number, settings: PatternSettings) => Elevation;
@@ -98,7 +98,25 @@ function createRandomSquares(columns: number, rows: number, settings: RandomSett
   return (column, row) => heights[row][column] * settings.maxHeight;
 }
 
-export const patterns: Record<'smooth' | 'squareWave' | 'randomSquares', SurfacePattern> = {
+interface ContinuousPattern {
+  label: string;
+  elevationAt: (x: number, y: number, width: number, height: number) => number;
+}
+
+function parallelArches(x: number, y: number, width: number, height: number): number {
+  const scale = Math.min(width, height);
+  // Distance from a downward ray gives straight legs and a semicircular crown.
+  const distance = Math.hypot(x - width / 2, Math.max(0, y - height * 0.48)) / scale;
+  const firstRadius = 0.10;
+  const spacing = 0.07;
+  const halfWidth = 0.024;
+  const rib = Math.round((distance - firstRadius) / spacing);
+  const offset = Math.abs(distance - (firstRadius + rib * spacing));
+  if (rib < 0 || rib >= 5 || offset >= halfWidth) return 0;
+  return 4 * (1 + Math.cos(Math.PI * offset / halfWidth));
+}
+
+export const patterns = {
   smooth: {
     label: 'Gładki',
     cellsPerTile: 1,
@@ -114,6 +132,10 @@ export const patterns: Record<'smooth' | 'squareWave' | 'randomSquares', Surface
     cellsPerTile: 5,
     createElevation: (columns, rows, { random }) => createRandomSquares(columns, rows, random),
   },
-};
+  parallelArches: {
+    label: 'Równoległe łuki',
+    elevationAt: parallelArches,
+  },
+} satisfies Record<string, SteppedPattern | ContinuousPattern>;
 
 export type PatternId = keyof typeof patterns;

@@ -61,7 +61,7 @@ function renderLayout() {
   randomPanel.hidden = pattern !== 'randomSquares';
   randomHeightValue.value = `${random.maxHeight} mm`;
   reroll.disabled = !side;
-  grooveOption.hidden = pattern === 'smooth';
+  grooveOption.hidden = pattern !== 'squareWave' && pattern !== 'randomSquares';
   wavePanel.hidden = pattern !== 'squareWave';
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);

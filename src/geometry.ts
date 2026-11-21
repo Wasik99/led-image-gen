@@ -103,6 +103,42 @@ function buildTileMesh(heights: number[][], side: number, bevel = 0): MeshData {
   return { vertices: new Float32Array(vertices), outline: new Float32Array(outline) };
 }
 
+function buildContinuousMesh(side: number, steps: number, sample: (x: number, y: number) => number): MeshData {
+  const vertices: number[] = [];
+  const outline: number[] = [];
+  const points = Array.from({ length: steps + 1 }, (_, y) =>
+    Array.from({ length: steps + 1 }, (_, x): Point => [x * side / steps, y * side / steps, sample(x, y)]),
+  );
+  const floorCenter: Point = [side / 2, side / 2, 0];
+
+  function closeEdge(a: Point, b: Point) {
+    const bottomA: Point = [a[0], a[1], 0];
+    const bottomB: Point = [b[0], b[1], 0];
+    vertices.push(...bottomA, ...bottomB, ...b, ...bottomA, ...b, ...a);
+    vertices.push(...floorCenter, ...bottomB, ...bottomA);
+    outline.push(a[0], a[1], a[2] + 0.05, b[0], b[1], b[2] + 0.05);
+  }
+
+  for (let y = 0; y < steps; y++) {
+    for (let x = 0; x < steps; x++) {
+      const a = points[y][x];
+      const b = points[y][x + 1];
+      const c = points[y + 1][x + 1];
+      const d = points[y + 1][x];
+      vertices.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+  }
+
+  for (let i = 0; i < steps; i++) {
+    closeEdge(points[0][i], points[0][i + 1]);
+    closeEdge(points[i][steps], points[i + 1][steps]);
+    closeEdge(points[steps][i + 1], points[steps][i]);
+    closeEdge(points[i + 1][0], points[i][0]);
+  }
+
+  return { vertices: new Float32Array(vertices), outline: new Float32Array(outline) };
+}
+
 export function generateTiles(
   width: number, height: number, side: number,
   pattern: PatternId = 'smooth',
@@ -113,25 +149,43 @@ export function generateTiles(
     throw new Error('Wymiary obrazu muszą dzielić się przez bok kafelka.');
   }
 
-  const { cellsPerTile, createElevation } = patterns[pattern];
+  const surface = patterns[pattern];
   const columns = width / side;
   const rows = height / side;
-  const elevation = createElevation(columns * cellsPerTile, rows * cellsPerTile, settings);
-  const heights = Array.from({ length: rows * cellsPerTile }, (_, y) =>
-    Array.from({ length: columns * cellsPerTile }, (_, x) => Math.fround(BASE_HEIGHT + elevation(x, y))),
-  );
-  const flatMesh = cellsPerTile === 1 ? buildTileMesh([[BASE_HEIGHT]], side) : undefined;
-  const bevel = settings.grooves ? GROOVE_BEVEL : 0;
+  let buildMesh: (column: number, rowFromBottom: number) => MeshData;
+
+  if ('elevationAt' in surface) {
+    // Sample at a consistent resolution across each seam, even on rectangular compositions.
+    const steps = Math.ceil(84 * side / Math.min(width, height));
+    buildMesh = (column, row) => buildContinuousMesh(side, steps, (x, y) => {
+      const globalX = (column * steps + x) * side / steps;
+      const globalY = (row * steps + y) * side / steps;
+      return BASE_HEIGHT + surface.elevationAt(globalX, globalY, width, height);
+    });
+  } else if (pattern === 'smooth') {
+    const mesh = buildTileMesh([[BASE_HEIGHT]], side);
+    buildMesh = () => mesh;
+  } else {
+    const { cellsPerTile, createElevation } = surface;
+    const elevation = createElevation(columns * cellsPerTile, rows * cellsPerTile, settings);
+    const heights = Array.from({ length: rows * cellsPerTile }, (_, y) =>
+      Array.from({ length: columns * cellsPerTile }, (_, x) => Math.fround(BASE_HEIGHT + elevation(x, y))),
+    );
+    const bevel = settings.grooves ? GROOVE_BEVEL : 0;
+    buildMesh = (column, row) => {
+      const startX = column * cellsPerTile;
+      const startY = row * cellsPerTile;
+      const tileHeights = heights.slice(startY, startY + cellsPerTile)
+        .map((line) => line.slice(startX, startX + cellsPerTile));
+      return buildTileMesh(tileHeights, side, bevel);
+    };
+  }
+
   const tiles: Tile[] = [];
 
   for (let row = 0; row < rows; row++) {
-    const startY = (rows - 1 - row) * cellsPerTile;
-    const tileRows = heights.slice(startY, startY + cellsPerTile);
     for (let column = 0; column < columns; column++) {
-      const startX = column * cellsPerTile;
-      const mesh = flatMesh ?? buildTileMesh(
-        tileRows.map((line) => line.slice(startX, startX + cellsPerTile)), side, bevel,
-      );
+      const mesh = buildMesh(column, rows - 1 - row);
       tiles.push({ row, column, ...mesh });
     }
   }
