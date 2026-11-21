@@ -1,5 +1,6 @@
 import { exportTiles } from './export';
 import { generateTiles, type Tile } from './geometry';
+import { createLayoutEditor } from './layout-editor';
 import { findLayout, type ImageSize } from './layout';
 import { archRoutes, defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type WaveDirection } from './patterns';
 import { createPreview } from './preview';
@@ -31,6 +32,7 @@ const archShiftX = document.querySelector<HTMLInputElement>('#arch-shift-x')!;
 const archShiftY = document.querySelector<HTMLInputElement>('#arch-shift-y')!;
 const archShiftXValue = document.querySelector<HTMLOutputElement>('#arch-shift-x-value')!;
 const archShiftYValue = document.querySelector<HTMLOutputElement>('#arch-shift-y-value')!;
+const editorPanel = document.querySelector<HTMLElement>('#layout-editor')!;
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const count = document.querySelector<HTMLElement>('#tile-count')!;
 const info = document.querySelector<HTMLElement>('#preview-info')!;
@@ -54,7 +56,15 @@ try {
   hideDivision.disabled = true;
 }
 
+let editorUpdate: ReturnType<typeof setTimeout> | undefined;
+const editor = createLayoutEditor(editorPanel, () => {
+  download.disabled = true;
+  if (editorUpdate === undefined) editorUpdate = setTimeout(renderLayout, 90);
+});
+
 function renderLayout() {
+  clearTimeout(editorUpdate);
+  editorUpdate = undefined;
   const width = widthInput.valueAsNumber;
   const height = heightInput.valueAsNumber;
   const side = Number(tileSize.value);
@@ -71,6 +81,8 @@ function renderLayout() {
     shiftX: archShiftX.valueAsNumber,
     shiftY: archShiftY.valueAsNumber,
   };
+  editorPanel.hidden = pattern !== 'customLayout' || !side;
+  if (!editorPanel.hidden) editor.setSize(width, height);
   archPanel.hidden = pattern !== 'parallelArches';
   archShiftXValue.value = `${arches.shiftX}%`;
   archShiftYValue.value = `${arches.shiftY}%`;
@@ -81,7 +93,7 @@ function renderLayout() {
   wavePanel.hidden = pattern !== 'squareWave';
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);
-  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, arches, grooves: grooves.checked }) : [];
+  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, arches, customPieces: editor.pieces, grooves: grooves.checked }) : [];
   download.disabled = tiles.length === 0;
   count.textContent = tiles.length ? String(tiles.length) : '—';
   info.textContent = tiles.length

@@ -83,3 +83,22 @@ select:focus-visible { outline: 2px solid var(--accent); }
 .groove-option { margin-top: 12px; }
 
 .arch-shift { margin-top: 10px; }
+
+#layout-editor { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.editor-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.editor-tools h2 { margin-right: auto; }
+.editor-tools button { width: auto; padding: 7px 10px; font-size: .8rem; }
+.editor-tools button[draggable] { cursor: grab; }
+#layout-editor svg {
+  display: block;
+  width: 100%;
+  max-height: 330px;
+  margin-top: 10px;
+  background: #151718;
+  border: 1px solid var(--line);
+  touch-action: none;
+  user-select: none;
+}
+#layout-editor path { fill: none; stroke: #c2b29d; stroke-width: 2.4; cursor: move; }
+#layout-editor .selected path { stroke: var(--accent); }
+#layout-editor .snap-marker { fill: #90dad0; pointer-events: none; }

@@ -1,3 +1,5 @@
+import { createLayoutSurface, type LayoutPiece } from './custom-layout';
+
 export type WaveDirection = 'horizontal' | 'vertical' | 'diagonal';
 
 export interface WaveSettings {
@@ -39,6 +41,7 @@ export interface PatternSettings {
   random: RandomSettings;
   grooves?: boolean;
   arches?: ArchSettings;
+  customPieces?: readonly LayoutPiece[];
 }
 
 export const defaultRandomSettings: RandomSettings = { maxHeight: 14, seed: 1 };
@@ -201,6 +204,10 @@ export const patterns = {
   parallelArches: {
     label: 'Równoległe łuki',
     createSurface: createParallelArches,
+  },
+  customLayout: {
+    label: 'Własny układ',
+    createSurface: (width, height, { customPieces = [] }) => createLayoutSurface(width, height, customPieces),
   },
 } satisfies Record<string, SteppedPattern | ContinuousPattern>;
 

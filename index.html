@@ -20,6 +20,20 @@
               <label><input id="hide-division" type="checkbox" /> Ukryj podział</label>
             </div>
           </div>
+          <section id="layout-editor" aria-labelledby="layout-editor-title" hidden>
+            <div class="editor-tools">
+              <h2 id="layout-editor-title">Plansza 2D</h2>
+              <button data-piece-kind="straight" draggable="true" type="button">Proste pasy</button>
+              <button data-piece-kind="corner" draggable="true" type="button">Zakręt 90°</button>
+              <button id="rotate-piece" type="button">Obróć o 90°</button>
+              <button id="remove-piece" type="button">Usuń element</button>
+            </div>
+            <p class="hint">Przeciągnij element z palety albo kliknij, by dodać go na środku. Zbliż pasujące końce, żeby je połączyć.</p>
+            <svg aria-label="Plansza do układania pasów" viewBox="0 0 100 100">
+              <g></g>
+              <circle r="1.7" class="snap-marker" />
+            </svg>
+          </section>
           <div id="viewport"></div>
           <div id="preview-info" class="preview-info"></div>
         </section>
