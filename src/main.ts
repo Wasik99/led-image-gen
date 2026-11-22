@@ -29,6 +29,8 @@ const reroll = document.querySelector<HTMLButtonElement>('#reroll')!;
 const hideDivision = document.querySelector<HTMLInputElement>('#hide-division')!;
 const yarnPanel = document.querySelector<HTMLFieldSetElement>('#yarn-settings')!;
 const yarnScale = document.querySelector<HTMLInputElement>('#yarn-scale')!;
+const yarnHeight = document.querySelector<HTMLInputElement>('#yarn-height')!;
+const yarnHeightValue = document.querySelector<HTMLOutputElement>('#yarn-height-value')!;
 const yarnScaleValue = document.querySelector<HTMLOutputElement>('#yarn-scale-value')!;
 const archPanel = document.querySelector<HTMLFieldSetElement>('#arch-settings')!;
 const archRoute = document.querySelector<HTMLSelectElement>('#arch-route')!;
@@ -157,6 +159,7 @@ function renderLayout() {
   editorPanel.hidden = pattern !== 'customLayout' || !side;
   if (!editorPanel.hidden) editor.setSize(width, height);
   yarnPanel.hidden = pattern !== 'yarn';
+  yarnHeightValue.value = `${yarnHeight.valueAsNumber.toLocaleString('pl-PL')} mm`;
   yarnScaleValue.value = `${yarnScale.value}%`;
   archPanel.hidden = pattern !== 'parallelArches';
   archShiftXValue.value = `${arches.shiftX}%`;
@@ -169,7 +172,7 @@ function renderLayout() {
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);
   const settings = {
-    wave: waveSettings, random, arches, yarnScale: yarnScale.valueAsNumber, customPieces: editor.pieces,
+    wave: waveSettings, random, arches, yarnScale: yarnScale.valueAsNumber, yarnHeight: yarnHeight.valueAsNumber, customPieces: editor.pieces,
     invertCustomRelief: invertCustomRelief.checked, grooves: grooves.checked,
   };
   if (side && pattern === 'customLayout' && getLayoutWorker()) {
@@ -243,6 +246,7 @@ invertCustomRelief.addEventListener('change', renderLayout);
 grooves.addEventListener('change', renderLayout);
 waveHeight.addEventListener('input', renderLayout);
 yarnScale.addEventListener('input', renderLayout);
+yarnHeight.addEventListener('input', renderLayout);
 waveDensity.addEventListener('input', renderLayout);
 waveDirection.addEventListener('change', renderLayout);
 applySuggestion.addEventListener('click', () => {

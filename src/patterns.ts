@@ -39,6 +39,7 @@ export const defaultArchSettings: ArchSettings = { route: 'u', rotation: 0, shif
 
 export interface PatternSettings {
   yarnScale?: number;
+  yarnHeight?: number;
   wave: WaveSettings;
   random: RandomSettings;
   grooves?: boolean;
@@ -161,7 +162,10 @@ function createParallelArches(width: number, height: number, { arches = defaultA
   };
 }
 
-function createYarn(width: number, height: number, { yarnScale = 100 }: PatternSettings) {
+const defaultYarnHeight = 4.2;
+
+function createYarn(width: number, height: number, { yarnScale = 100, yarnHeight = defaultYarnHeight }: PatternSettings) {
+  const heightScale = yarnHeight / defaultYarnHeight;
   const columns = Math.max(3, Math.min(20, Math.round(Math.min(width, height) / 12)));
   const pitch = Math.min(width, height) / columns * yarnScale / 100;
   const rowSpacing = 0.57;
@@ -188,7 +192,7 @@ function createYarn(width: number, height: number, { yarnScale = 100 }: PatternS
         knit = Math.max(knit, lobe(dx, dy, -1), lobe(dx, dy, 1));
       }
     }
-    return 0.65 + 3.55 * knit;
+    return heightScale * (0.65 + 3.55 * knit);
   };
 }
 
