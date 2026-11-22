@@ -1,4 +1,4 @@
-import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceBoardScale, pieceHitWidth, railPath, railPaths, resizeStraightPiece, snapPiece, squarePatch, squarePatchElevation, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceBoardScale, pieceHitWidth, railPath, railPaths, resizeStraightPiece, rotatePoint, snapPiece, squarePatch, squarePatchElevation, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -60,7 +60,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const drawing = board.querySelector<SVGGElement>('g')!;
   const marker = board.querySelector<SVGCircleElement>('circle')!;
   const copy = panel.querySelector<HTMLButtonElement>('#copy-piece')!;
-  const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
+  const rotationHandle = board.querySelector<SVGGElement>('#rotate-handle')!;
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
   const patchWidth = panel.querySelector<HTMLInputElement>('#patch-width')!;
@@ -80,6 +80,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   let selected: LayoutPiece | undefined;
   let joint: BoardPoint | undefined;
   let dragging: DragState | undefined;
+  let rotating: { pointerId: number; angle: number; rotation: number; moved: boolean } | undefined;
 
   function movingGroup(piece: LayoutPiece) {
     return moveConnected.checked ? connectedPieces(piece, pieces) : [piece];
@@ -95,6 +96,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   function render() {
     drawing.replaceChildren();
+    rotationHandle.style.display = 'none';
     const groupPieces = selected ? connectedPieces(selected, pieces) : [];
     const connected = new Set(groupPieces);
     for (const piece of pieces) {
@@ -102,7 +104,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       group.dataset.piece = String(piece.id);
       group.classList.toggle('selected', piece === selected);
       group.classList.toggle('connected', connected.has(piece));
-      group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${pieceBoardScale(piece, millimetersPerUnit)})`);
+      group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation}) scale(${pieceBoardScale(piece, millimetersPerUnit)})`);
       if (piece.kind === 'straight' || piece.kind === 'corner') {
         const hitArea = document.createElementNS(svgNamespace, 'path');
         hitArea.classList.add('piece-hit-area');
@@ -112,6 +114,15 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       }
       drawPieceShape(group, piece.kind, piece.railCount, piece.length, piece.squareSeed, piece.squareColumns, piece.squareRows);
       drawing.append(group);
+      if (piece === selected && piece.kind !== 'circle') {
+        const bounds = group.getBBox();
+        const scale = pieceBoardScale(piece, millimetersPerUnit);
+        const corner = rotatePoint({ x: bounds.x * scale - 7, y: bounds.y * scale - 7 }, piece.rotation);
+        const x = Math.max(6 - boardPadding, Math.min(width + boardPadding - 6, piece.x + corner.x));
+        const y = Math.max(6 - boardPadding, Math.min(height + boardPadding - 6, piece.y + corner.y));
+        rotationHandle.setAttribute('transform', `translate(${x} ${y})`);
+        rotationHandle.style.display = '';
+      }
     }
     marker.style.display = joint ? '' : 'none';
     if (joint) {
@@ -120,7 +131,6 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     }
     remove.disabled = reliefHeight.disabled = !selected;
     size.disabled = !selected || selected.kind === 'squarePatch';
-    rotate.disabled = !selected || selected.kind === 'circle';
     railCount.disabled = selected?.kind !== 'straight' && selected?.kind !== 'corner';
     length.disabled = selected?.kind !== 'straight';
     patchWidth.disabled = patchLength.disabled = selected?.kind !== 'squarePatch';
@@ -163,14 +173,14 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   snapGrid.addEventListener('change', updateGrid);
 
-  function move(piece: LayoutPiece, point: BoardPoint, alignGrid = true) {
+  function move(piece: LayoutPiece, point: BoardPoint) {
     piece.x = Math.max(-moveMargin, Math.min(width + moveMargin, point.x));
     piece.y = Math.max(-moveMargin, Math.min(height + moveMargin, point.y));
     const snap = snapPiece(piece, pieces, width, height, moveMargin);
     joint = snap?.joint;
     if (snap) {
       Object.assign(piece, snap.point, snap.dimensions);
-    } else if (alignGrid && snapGrid.checked) {
+    } else if (snapGrid.checked) {
       piece.x = gridCoordinate(piece.x, width / 2, -moveMargin, width + moveMargin);
       piece.y = gridCoordinate(piece.y, height / 2, -moveMargin, height + moveMargin);
     }
@@ -212,8 +222,37 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     add(kind, boardPoint(event));
   });
 
+  function pointerAngle(point: BoardPoint, piece: LayoutPiece) {
+    return Math.atan2(point.y - piece.y, point.x - piece.x) * 180 / Math.PI;
+  }
+
+  function updateRotation(degrees: number) {
+    if (!selected || selected.kind === 'circle') return;
+    const rotation = ((degrees % 360) + 360) % 360;
+    if (rotation === selected.rotation) return;
+    selected.rotation = rotation;
+    joint = undefined;
+    render();
+    onChange();
+  }
+
+  rotationHandle.addEventListener('keydown', (event) => {
+    if (!selected || !['Enter', ' ', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    updateRotation(selected.rotation + (event.key === 'ArrowLeft' ? -30 : 30));
+  });
+
   board.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || dragging || rotating) return;
+    if (selected && rotationHandle.contains(event.target as Node)) {
+      event.preventDefault();
+      rotating = {
+        pointerId: event.pointerId, angle: pointerAngle(boardPoint(event), selected),
+        rotation: selected.rotation, moved: false,
+      };
+      board.setPointerCapture(event.pointerId);
+      return;
+    }
     const target = (event.target as Element).closest<SVGGElement>('[data-piece]');
     selected = pieces.find(piece => String(piece.id) === target?.dataset.piece);
     joint = undefined;
@@ -240,6 +279,13 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     render();
   });
   board.addEventListener('pointermove', (event) => {
+    if (selected && rotating?.pointerId === event.pointerId) {
+      const angle = pointerAngle(boardPoint(event), selected) - rotating.angle;
+      const steps = Math.round(angle / 30);
+      if (steps % 12) rotating.moved = true;
+      updateRotation(rotating.rotation + steps * 30);
+      return;
+    }
     if (!selected || dragging?.pointerId !== event.pointerId) return;
     const point = boardPoint(event);
     const destination = { x: point.x - dragging.offset.x, y: point.y - dragging.offset.y };
@@ -259,8 +305,14 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     render();
     onChange();
   });
+  board.addEventListener('pointerup', (event) => {
+    if (selected && rotating?.pointerId === event.pointerId && !rotating.moved) {
+      updateRotation(rotating.rotation + 30);
+    }
+  });
   board.addEventListener('lostpointercapture', (event) => {
     if (dragging?.pointerId === event.pointerId) dragging = undefined;
+    if (rotating?.pointerId === event.pointerId) rotating = undefined;
   });
 
   function updateDimensions() {
@@ -330,11 +382,6 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     onChange();
   });
 
-  rotate.addEventListener('click', () => {
-    if (!selected) return;
-    selected.rotation = (selected.rotation + 1) % 4;
-    move(selected, selected, false);
-  });
   remove.addEventListener('click', () => {
     if (!selected) return;
     pieces.splice(pieces.indexOf(selected), 1);

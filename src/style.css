@@ -159,7 +159,7 @@ select:focus-visible { outline: 2px solid var(--accent); }
   border-left: 1px solid var(--line);
   background: #202324;
 }
-.editor-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.editor-actions { display: grid; grid-template-columns: repeat(2, 42px); gap: 5px; }
 .editor-actions button {
   display: grid;
   place-items: center;
@@ -177,9 +177,13 @@ select:focus-visible { outline: 2px solid var(--accent); }
 @media (max-width: 620px) {
   .editor-workspace { grid-template-columns: auto minmax(0, 1fr); }
   .editor-inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
-  .editor-actions { grid-template-columns: repeat(3, 42px); }
   .editor-inspector .piece-settings > label, .piece-setting-slot { width: min(100%, 140px); }
 }
 
 #layout-editor .piece-square { fill: #c2b29d; cursor: move; }
 #layout-editor .selected .piece-square { fill: var(--accent); }
+
+#rotate-handle { cursor: grab; }
+#rotate-handle circle { fill: #292d2f; stroke: var(--accent); stroke-width: .5; }
+#layout-editor #rotate-handle path { stroke: var(--accent); stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#rotate-handle:focus-visible circle { stroke: #fff; }

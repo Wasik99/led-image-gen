@@ -37,8 +37,8 @@ interface Endpoint extends BoardPoint {
 }
 
 const endpoints: Record<PieceKind, Endpoint[]> = {
-  straight: [{ x: -straightHalfLength, y: 0, heading: 2 }, { x: straightHalfLength, y: 0, heading: 0 }],
-  corner: [{ x: -8, y: 8, heading: 1 }, { x: 8, y: -8, heading: 0 }],
+  straight: [{ x: -straightHalfLength, y: 0, heading: 180 }, { x: straightHalfLength, y: 0, heading: 0 }],
+  corner: [{ x: -8, y: 8, heading: 90 }, { x: 8, y: -8, heading: 0 }],
   circle: [],
   squarePatch: [],
 };
@@ -73,29 +73,29 @@ export function railPaths(piece: Pick<LayoutPiece, 'kind' | 'railCount' | 'lengt
   return railOffsets(piece.railCount).map(offset => railPath(piece.kind, offset, piece.length));
 }
 
-function rotate(point: BoardPoint, turn: number): BoardPoint {
-  const { x, y } = point;
-  switch (turn % 4) {
-    case 1: return { x: -y, y: x };
-    case 2: return { x: -x, y: -y };
-    case 3: return { x: y, y: -x };
-    default: return point;
-  }
+const rotationVectors = Array.from({ length: 12 }, (_, index) => {
+  const radians = index * Math.PI / 6;
+  return { cos: Math.round(Math.cos(radians) * 1e12) / 1e12, sin: Math.round(Math.sin(radians) * 1e12) / 1e12 };
+});
+
+export function rotatePoint(point: BoardPoint, degrees: number): BoardPoint {
+  const { cos, sin } = rotationVectors[((degrees / 30) % 12 + 12) % 12];
+  return { x: point.x * cos - point.y * sin, y: point.x * sin + point.y * cos };
 }
 
 function pieceEndpoints(piece: LayoutPiece): Endpoint[] {
   return endpoints[piece.kind].map(end => {
-    const offset = rotate({ ...end, x: end.x * (piece.length ?? 1) }, piece.rotation);
+    const offset = rotatePoint({ ...end, x: end.x * (piece.length ?? 1) }, piece.rotation);
     return {
       x: piece.x + offset.x * piece.size,
       y: piece.y + offset.y * piece.size,
-      heading: (end.heading + piece.rotation) % 4,
+      heading: (end.heading + piece.rotation) % 360,
     };
   });
 }
 
 function faceEachOther(a: Endpoint, b: Endpoint) {
-  return (a.heading + 2) % 4 === b.heading;
+  return (a.heading + 180) % 360 === b.heading;
 }
 
 export function resizeStraightPiece(piece: LayoutPiece, length: number, pieces: LayoutPiece[]) {
@@ -195,8 +195,8 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
     for (const { piece, offsets, extent, halfLength, squares, columns, rows, localScale } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
-      if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
-      const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > extent * Math.SQRT2) continue;
+      const local = rotatePoint({ x: dx, y: dy }, -piece.rotation);
       const localX = local.x / localScale;
       const localY = local.y / localScale;
       if (squares) {

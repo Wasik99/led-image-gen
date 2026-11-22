@@ -40,14 +40,16 @@
                 <rect id="layout-grid" fill="url(#layout-grid-pattern)" style="display: none" />
                 <g></g>
                 <circle r="1.7" class="snap-marker" />
+                <g id="rotate-handle" role="button" aria-label="Obróć element o 30°" tabindex="0" style="display: none">
+                  <title>Przeciągnij, aby obrócić co 30°, albo kliknij</title>
+                  <circle r="4.6" />
+                  <path d="M2.2 -2.4v2h-2m2-.1a2.6 2.6 0 1 0 .25 1.9" />
+                </g>
               </svg>
               <div class="editor-inspector" role="group" aria-label="Edycja układu">
                 <div class="editor-actions" role="group" aria-label="Operacje na zaznaczeniu">
                   <button id="copy-piece" type="button" aria-label="Kopiuj" title="Kopiuj">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 5a1 1 0 0 0-1-1H6a2 2 0 0 0-2 2v9a1 1 0 0 0 1 1"/></svg>
-                  </button>
-                  <button id="rotate-piece" type="button" aria-label="Obróć o 90°" title="Obróć o 90°">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v5h-5M19 10a7 7 0 1 0 .5 5"/></svg>
                   </button>
                   <button id="remove-piece" type="button" aria-label="Usuń element" title="Usuń element">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M6 7l1 13h10l1-13M9 7V4h6v3M10 11v5m4-5v5"/></svg>
