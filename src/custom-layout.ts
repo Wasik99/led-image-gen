@@ -3,6 +3,7 @@ export interface BoardPoint { x: number; y: number }
 export interface PieceDimensions {
   size: number;
   railCount: number;
+  reliefHeight: number;
 }
 
 export interface LayoutPiece extends BoardPoint, PieceDimensions {
@@ -10,6 +11,8 @@ export interface LayoutPiece extends BoardPoint, PieceDimensions {
   kind: PieceKind;
   rotation: number;
 }
+
+export const defaultPieceHeight = 8;
 
 const straightHalfLength = 15;
 const radius = 16;
@@ -101,7 +104,7 @@ export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: numb
   const originalEnds = pieceEndpoints(piece);
   for (const other of others) {
     if (other.id === piece.id) continue;
-    const dimensions = { size: other.size, railCount: other.railCount };
+    const dimensions = { size: other.size, railCount: other.railCount, reliefHeight: other.reliefHeight };
     const adjustedEnds = pieceEndpoints({ ...piece, ...dimensions });
     for (const joint of pieceEndpoints(other)) {
       for (const [index, end] of adjustedEnds.entries()) {
@@ -135,7 +138,7 @@ function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[]
 
   let distance = railHalfWidth;
   for (const offset of offsets) distance = Math.min(distance, distanceToRail(offset));
-  return distance < railHalfWidth ? 4 * (1 + Math.cos(Math.PI * distance / railHalfWidth)) : 0;
+  return distance < railHalfWidth ? (1 + Math.cos(Math.PI * distance / railHalfWidth)) / 2 : 0;
 }
 
 export function createLayoutSurface(width: number, height: number, pieces: readonly LayoutPiece[]) {
@@ -158,11 +161,11 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
       if (piece.kind === 'circle') {
         const edgeDistance = circleRadius - Math.hypot(dx, dy) / piece.size;
         const rise = Math.max(0, Math.min(1, edgeDistance / circleBevel));
-        elevation = Math.max(elevation, 8 * rise);
+        elevation = Math.max(elevation, piece.reliefHeight * rise);
         continue;
       }
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
-      elevation = Math.max(elevation, reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets));
+      elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets));
     }
     return elevation;
   };

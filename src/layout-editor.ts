@@ -1,4 +1,4 @@
-import { boardScale, circleRadius, connectedPieces, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -22,6 +22,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
+  const reliefHeight = panel.querySelector<HTMLInputElement>('#piece-relief-height')!;
   const railCount = panel.querySelector<HTMLInputElement>('#piece-rail-count')!;
   const groupSize = panel.querySelector<HTMLElement>('#piece-group-size')!;
   const palette = [...panel.querySelectorAll<HTMLButtonElement>('[data-piece-kind]')];
@@ -68,9 +69,10 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       marker.setAttribute('cx', String(joint.x));
       marker.setAttribute('cy', String(joint.y));
     }
-    remove.disabled = size.disabled = !selected;
+    remove.disabled = size.disabled = reliefHeight.disabled = !selected;
     railCount.disabled = rotate.disabled = !selected || selected.kind === 'circle';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
+    reliefHeight.value = selected ? String(selected.reliefHeight) : '';
     railCount.value = selected && !railCount.disabled ? String(selected.railCount) : '';
     groupSize.textContent = groupPieces.length > 1 ? `Elementy w połączonej grupie: ${groupPieces.length}` : '';
     for (const button of palette) button.disabled = pieces.length >= pieceLimit;
@@ -93,7 +95,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   function add(kind: PieceKind, point: BoardPoint) {
     if (pieces.length >= pieceLimit) return;
-    selected = { id: nextId++, kind, rotation: 0, size: 1, railCount: 5, ...point };
+    selected = { id: nextId++, kind, rotation: 0, size: 1, railCount: 5, reliefHeight: defaultPieceHeight, ...point };
     pieces.push(selected);
     move(selected, point);
   }
@@ -131,7 +133,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       dragging = {
         pointerId: event.pointerId,
         offset: { x: point.x - selected.x, y: point.y - selected.y },
-        dimensions: { size: selected.size, railCount: selected.railCount },
+        dimensions: { size: selected.size, railCount: selected.railCount, reliefHeight: selected.reliefHeight },
         group,
         minDelta: {
           x: Math.min(0, -Math.min(...group.map(({ origin }) => origin.x))),
@@ -172,7 +174,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   function updateDimensions() {
     if (!selected) return;
-    if (!size.checkValidity() || !railCount.checkValidity()) {
+    if (!size.checkValidity() || !railCount.checkValidity() || !reliefHeight.checkValidity()) {
       render();
       return;
     }
@@ -186,6 +188,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       piece.y = anchor.y + (piece.y - anchor.y) * factor;
       piece.size = newSize;
       piece.railCount = newRailCount;
+      piece.reliefHeight = reliefHeight.valueAsNumber;
     }
     joint = undefined;
     render();
@@ -194,6 +197,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   size.addEventListener('change', updateDimensions);
   railCount.addEventListener('change', updateDimensions);
+  reliefHeight.addEventListener('change', updateDimensions);
 
   rotate.addEventListener('click', () => {
     if (!selected) return;
