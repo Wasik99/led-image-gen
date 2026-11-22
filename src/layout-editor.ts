@@ -16,6 +16,12 @@ interface DragState {
   maxDelta: BoardPoint;
 }
 
+interface RotationMember {
+  piece: LayoutPiece;
+  offset: BoardPoint;
+  rotation: number;
+}
+
 function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, length?: number, squareSeed = 1, columns = squarePatch.columns, rows = squarePatch.rows) {
   if (kind === 'circle') {
     const disc = document.createElementNS(svgNamespace, 'circle');
@@ -80,7 +86,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   let selected: LayoutPiece | undefined;
   let joint: BoardPoint | undefined;
   let dragging: DragState | undefined;
-  let rotating: { pointerId: number; angle: number; rotation: number; moved: boolean } | undefined;
+  let rotating: { pointerId: number; angle: number; members: RotationMember[]; moved: boolean } | undefined;
 
   function movingGroup(piece: LayoutPiece) {
     return moveConnected.checked ? connectedPieces(piece, pieces) : [piece];
@@ -226,11 +232,25 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     return Math.atan2(point.y - piece.y, point.x - piece.x) * 180 / Math.PI;
   }
 
-  function updateRotation(degrees: number) {
-    if (!selected || selected.kind === 'circle') return;
-    const rotation = ((degrees % 360) + 360) % 360;
-    if (rotation === selected.rotation) return;
-    selected.rotation = rotation;
+  function rotationMembers(anchor: LayoutPiece): RotationMember[] {
+    return movingGroup(anchor).map(piece => ({
+      piece,
+      offset: { x: piece.x - anchor.x, y: piece.y - anchor.y },
+      rotation: piece.rotation,
+    }));
+  }
+
+  function updateRotation(delta: number, members: RotationMember[]) {
+    const anchor = members[0].piece;
+    const rotation = ((members[0].rotation + delta) % 360 + 360) % 360;
+    if (rotation === anchor.rotation) return;
+    const { x, y } = anchor;
+    for (const member of members) {
+      const offset = rotatePoint(member.offset, delta);
+      member.piece.x = x + offset.x;
+      member.piece.y = y + offset.y;
+      member.piece.rotation = ((member.rotation + delta) % 360 + 360) % 360;
+    }
     joint = undefined;
     render();
     onChange();
@@ -239,7 +259,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   rotationHandle.addEventListener('keydown', (event) => {
     if (!selected || !['Enter', ' ', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     event.preventDefault();
-    updateRotation(selected.rotation + (event.key === 'ArrowLeft' ? -30 : 30));
+    updateRotation(event.key === 'ArrowLeft' ? -30 : 30, rotationMembers(selected));
   });
 
   board.addEventListener('pointerdown', (event) => {
@@ -248,7 +268,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       event.preventDefault();
       rotating = {
         pointerId: event.pointerId, angle: pointerAngle(boardPoint(event), selected),
-        rotation: selected.rotation, moved: false,
+        members: rotationMembers(selected), moved: false,
       };
       board.setPointerCapture(event.pointerId);
       return;
@@ -283,7 +303,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       const angle = pointerAngle(boardPoint(event), selected) - rotating.angle;
       const steps = Math.round(angle / 30);
       if (steps % 12) rotating.moved = true;
-      updateRotation(rotating.rotation + steps * 30);
+      updateRotation(steps * 30, rotating.members);
       return;
     }
     if (!selected || dragging?.pointerId !== event.pointerId) return;
@@ -307,7 +327,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   });
   board.addEventListener('pointerup', (event) => {
     if (selected && rotating?.pointerId === event.pointerId && !rotating.moved) {
-      updateRotation(rotating.rotation + 30);
+      updateRotation(30, rotating.members);
     }
   });
   board.addEventListener('lostpointercapture', (event) => {
