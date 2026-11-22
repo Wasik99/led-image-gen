@@ -21,11 +21,14 @@ type MeshData = Pick<Tile, 'vertices' | 'outline' | 'normals'>;
 
 type Point = [number, number, number];
 
-function buildTileMesh(heights: number[][], side: number, bevel = 0): MeshData {
+function buildTileMesh(heights: number[][], side: number, bevel = 0, edges?: number[]): MeshData {
   const vertices: number[] = [];
   const outline: number[] = [];
   const cells = heights.length;
-  const rimHeights = bevel ? heights.map((row) => row.map((z) => z - bevel)) : heights;
+  const coordinate = (index: number) => edges?.[index] ?? index * side / cells;
+  const rimHeights = bevel
+    ? heights.map(row => row.map(z => Math.max(BASE_HEIGHT, z - bevel)))
+    : heights;
 
   function quad(a: Point, b: Point, c: Point, d: Point) {
     vertices.push(...a, ...b, ...c, ...a, ...c, ...d);
@@ -43,10 +46,10 @@ function buildTileMesh(heights: number[][], side: number, bevel = 0): MeshData {
     // Subdivide each wall edge at the heights of the cells meeting at its corner.
     const levelsA = cornerLevels(ax, ay, low, high);
     const levelsB = cornerLevels(bx, by, low, high);
-    const leftX = ax * side / cells;
-    const leftY = ay * side / cells;
-    const rightX = bx * side / cells;
-    const rightY = by * side / cells;
+    const leftX = coordinate(ax);
+    const leftY = coordinate(ay);
+    const rightX = coordinate(bx);
+    const rightY = coordinate(by);
     let heightA = low;
     let heightB = low;
     let nextA = 0;
@@ -70,20 +73,21 @@ function buildTileMesh(heights: number[][], side: number, bevel = 0): MeshData {
 
   for (let y = 0; y < cells; y++) {
     for (let x = 0; x < cells; x++) {
-      const left = x * side / cells;
-      const right = (x + 1) * side / cells;
-      const bottom = y * side / cells;
-      const top = (y + 1) * side / cells;
+      const left = coordinate(x);
+      const right = coordinate(x + 1);
+      const bottom = coordinate(y);
+      const top = coordinate(y + 1);
       const z = heights[y][x];
       const edgeZ = rimHeights[y][x];
-      const a: Point = [left + bevel, bottom + bevel, z];
-      const b: Point = [right - bevel, bottom + bevel, z];
-      const c: Point = [right - bevel, top - bevel, z];
-      const d: Point = [left + bevel, top - bevel, z];
+      const inset = z - edgeZ;
+      const a: Point = [left + inset, bottom + inset, z];
+      const b: Point = [right - inset, bottom + inset, z];
+      const c: Point = [right - inset, top - inset, z];
+      const d: Point = [left + inset, top - inset, z];
       quad(a, b, c, d);
       quad([left, bottom, 0], [left, top, 0], [right, top, 0], [right, bottom, 0]);
 
-      if (bevel) {
+      if (inset > 0) {
         const lowerLeft: Point = [left, bottom, edgeZ];
         const lowerRight: Point = [right, bottom, edgeZ];
         const upperRight: Point = [right, top, edgeZ];
@@ -266,12 +270,24 @@ export function generateTiles(
       Array.from({ length: columns * cellsPerTile }, (_, x) => Math.fround(BASE_HEIGHT + elevation(x, y))),
     );
     const bevel = settings.grooves ? GROOVE_BEVEL : 0;
+    const inset = squarePatch.grooveMm / 2;
+    const pitch = side / cellsPerTile;
+    const edges = [0];
+    for (let index = 0; index < cellsPerTile; index++) {
+      edges.push(index * pitch + inset, (index + 1) * pitch - inset);
+    }
+    edges.push(side);
+
     buildMesh = (column, row) => {
       const startX = column * cellsPerTile;
       const startY = row * cellsPerTile;
-      const tileHeights = heights.slice(startY, startY + cellsPerTile)
-        .map((line) => line.slice(startX, startX + cellsPerTile));
-      return buildTileMesh(tileHeights, side, bevel);
+      // Even rows and columns form the grooves, including half a groove at each tile edge.
+      const spaced = Array.from({ length: cellsPerTile * 2 + 1 }, (_, y) =>
+        Array.from({ length: cellsPerTile * 2 + 1 }, (_, x) =>
+          x % 2 && y % 2 ? heights[startY + (y - 1) / 2][startX + (x - 1) / 2] : BASE_HEIGHT,
+        ),
+      );
+      return buildTileMesh(spaced, side, bevel, edges);
     };
   }
 
