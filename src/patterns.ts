@@ -163,29 +163,31 @@ function createParallelArches(width: number, height: number, { arches = defaultA
 function createYarn(width: number, height: number) {
   const columns = Math.max(3, Math.min(20, Math.round(Math.min(width, height) / 12)));
   const pitch = Math.min(width, height) / columns;
-  const rowHeight = pitch * 1.18;
+  const rowSpacing = 0.57;
 
-  function strandDistance(x: number, y: number, ax: number, ay: number, bx: number, by: number) {
-    const dx = bx - ax;
-    const dy = by - ay;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
-    return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+  function lobe(x: number, y: number, direction: number) {
+    const dx = direction * x - 0.23;
+    const along = 0.54 * dx + 0.842 * y;
+    const across = 0.842 * dx - 0.54 * y;
+    const radius = (along / 0.41) ** 2 + (across / 0.22) ** 2;
+    return radius < 1 ? (1 - radius) ** 0.8 : 0;
   }
 
   return (x: number, y: number) => {
-    // Fold the stitch along its center to trace two rounded strands forming a V.
-    const column = x / pitch;
-    const row = y / rowHeight;
-    const u = Math.abs(column - Math.floor(column) - 0.5);
-    const v = row - Math.floor(row) - 0.5;
-    const distance = Math.min(
-      strandDistance(u, v, 0.028, -0.35, 0.17, -0.04),
-      strandDistance(u, v, 0.17, -0.04, 0.27, 0.34),
-    );
-    const radius = 0.15;
-    if (distance >= radius) return 0;
-    const profile = (1 + Math.cos(Math.PI * distance / radius)) / 2;
-    return 4.2 * profile * (0.94 + 0.06 * Math.cos(2 * Math.PI * (2 * v + u)));
+    const u = x / pitch;
+    const v = y / pitch;
+    const column = Math.floor(u);
+    const row = Math.floor(v / rowSpacing);
+    let knit = 0;
+    // Sample neighboring stitches as their rounded arms tuck into the next row.
+    for (let j = row - 1; j <= row + 1; j++) {
+      const dy = v - (j + 0.5) * rowSpacing;
+      for (let i = column - 1; i <= column + 1; i++) {
+        const dx = u - (i + 0.5);
+        knit = Math.max(knit, lobe(dx, dy, -1), lobe(dx, dy, 1));
+      }
+    }
+    return 0.65 + 3.55 * knit;
   };
 }
 
