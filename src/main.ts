@@ -32,6 +32,7 @@ const archShiftX = document.querySelector<HTMLInputElement>('#arch-shift-x')!;
 const archShiftY = document.querySelector<HTMLInputElement>('#arch-shift-y')!;
 const archShiftXValue = document.querySelector<HTMLOutputElement>('#arch-shift-x-value')!;
 const archShiftYValue = document.querySelector<HTMLOutputElement>('#arch-shift-y-value')!;
+const invertCustomRelief = document.querySelector<HTMLInputElement>('#invert-custom-relief')!;
 const editorPanel = document.querySelector<HTMLElement>('#layout-editor')!;
 const viewport = document.querySelector<HTMLElement>('#viewport')!;
 const count = document.querySelector<HTMLElement>('#tile-count')!;
@@ -93,7 +94,7 @@ function renderLayout() {
   wavePanel.hidden = pattern !== 'squareWave';
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);
-  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, arches, customPieces: editor.pieces, grooves: grooves.checked }) : [];
+  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, arches, customPieces: editor.pieces, invertCustomRelief: invertCustomRelief.checked, grooves: grooves.checked }) : [];
   download.disabled = tiles.length === 0;
   count.textContent = tiles.length ? String(tiles.length) : '—';
   info.textContent = tiles.length
@@ -158,6 +159,7 @@ archRotation.addEventListener('change', renderLayout);
 archShiftX.addEventListener('input', renderLayout);
 archShiftY.addEventListener('input', renderLayout);
 patternInput.addEventListener('change', renderLayout);
+invertCustomRelief.addEventListener('change', renderLayout);
 grooves.addEventListener('change', renderLayout);
 waveHeight.addEventListener('input', renderLayout);
 waveDensity.addEventListener('input', renderLayout);

@@ -1,5 +1,5 @@
 import { boardScale, circleRadius } from './custom-layout';
-import { addSolidCircles } from './solid-circles';
+import { applySolidCircles } from './solid-circles';
 import { MAX_DIMENSION, MIN_TILE_SIZE } from './layout';
 import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type PatternSettings } from './patterns';
 
@@ -206,6 +206,8 @@ export function generateTiles(
     const sample = surface.createSurface(width, height, settings);
     const scale = boardScale(width, height);
     const pieces = settings.customPieces ?? [];
+    const inverted = pattern === 'customLayout' && Boolean(settings.invertCustomRelief);
+    const referenceHeight = BASE_HEIGHT + (inverted ? Math.max(0, ...pieces.map(piece => piece.reliefHeight)) : 0);
     const circles = pattern === 'customLayout' ? pieces.filter(piece => piece.kind === 'circle').map(piece => ({
       x: piece.x * scale,
       y: height - piece.y * scale,
@@ -213,18 +215,19 @@ export function generateTiles(
       height: piece.reliefHeight,
     })) : [];
     const flatBase = pattern === 'customLayout' && pieces.every(piece => piece.kind === 'circle')
-      ? buildTileMesh([[BASE_HEIGHT]], side) : undefined;
+      ? buildTileMesh([[referenceHeight]], side) : undefined;
     buildMesh = (column, row) => {
       const originX = column * side;
       const originY = row * side;
       const base = flatBase ?? buildContinuousMesh(side, steps, (x, y) => {
         const globalX = (column * steps + x) * side / steps;
         const globalY = (row * steps + y) * side / steps;
-        return BASE_HEIGHT + sample(globalX, globalY);
+        const relief = sample(globalX, globalY);
+        return referenceHeight + (inverted ? -relief : relief);
       });
       const nearby = circles.map(circle => ({ ...circle, x: circle.x - originX, y: circle.y - originY }))
         .filter(({ x, y, radius }) => x + radius > 0 && x - radius < side && y + radius > 0 && y - radius < side);
-      return nearby.length ? addSolidCircles(base.vertices, side, BASE_HEIGHT, nearby) : base;
+      return nearby.length ? applySolidCircles(base.vertices, side, referenceHeight, nearby, inverted) : base;
     };
   } else if (pattern === 'smooth') {
     const mesh = buildTileMesh([[BASE_HEIGHT]], side);

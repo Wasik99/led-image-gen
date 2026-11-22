@@ -42,6 +42,7 @@ export interface PatternSettings {
   grooves?: boolean;
   arches?: ArchSettings;
   customPieces?: readonly LayoutPiece[];
+  invertCustomRelief?: boolean;
 }
 
 export const defaultRandomSettings: RandomSettings = { maxHeight: 14, seed: 1 };

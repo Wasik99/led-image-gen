@@ -115,3 +115,5 @@ select:focus-visible { outline: 2px solid var(--accent); }
 
 #layout-editor .piece-disc { fill: #c2b29d; cursor: move; }
 #layout-editor .selected .piece-disc { fill: var(--accent); }
+
+.invert-relief { margin-left: 14px; }

@@ -32,19 +32,23 @@ function toSolid(vertices: Float32Array) {
   }));
 }
 
-export function addSolidCircles(base: Float32Array, side: number, baseHeight: number, circles: SolidCircle[]) {
+export function applySolidCircles(
+  base: Float32Array, side: number, referenceHeight: number, circles: SolidCircle[], inverted: boolean,
+) {
   const body = toSolid(base);
-  const clip = engine.Manifold.cube([side, side, baseHeight + Math.max(...circles.map(circle => circle.height)) + 1]);
+  const clip = engine.Manifold.cube([side, side, referenceHeight + Math.max(...circles.map(circle => circle.height)) + 1]);
   const inserts = circles.map(({ x, y, radius, height }) => {
-    // Start inside the base so the result is one solid, with no internal faces.
+    // Extend across the reference surface for both joining and cutting.
     const cylinder = engine.Manifold.cylinder(height + 1, radius, radius, 192);
-    const positioned = cylinder.translate([x, y, baseHeight - 1]);
+    const positioned = cylinder.translate([x, y, inverted ? referenceHeight - height : referenceHeight - 1]);
     const clipped = positioned.intersect(clip);
     cylinder.delete();
     positioned.delete();
     return clipped;
   });
-  const merged = engine.Manifold.union([body, ...inserts]);
+  const merged = inverted
+    ? engine.Manifold.difference([body, ...inserts])
+    : engine.Manifold.union([body, ...inserts]);
   try {
     const shaded = merged.calculateNormals(0, 35);
     try {
