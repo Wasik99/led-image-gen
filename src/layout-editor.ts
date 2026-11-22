@@ -5,6 +5,7 @@ const pieceLimit = 24;
 const boardPadding = 30;
 const defaultRailCount = 5;
 const moveMargin = 24;
+const gridStep = 5;
 
 interface DragState {
   pointerId: number;
@@ -33,8 +34,12 @@ function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number) 
 
 export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const board = panel.querySelector<SVGSVGElement>('#layout-board')!;
-  const boundary = board.querySelector<SVGRectElement>('rect')!;
+  const boundary = board.querySelector<SVGRectElement>('.image-boundary')!;
   const moveConnected = panel.querySelector<HTMLInputElement>('#move-connected')!;
+  const snapGrid = panel.querySelector<HTMLInputElement>('#snap-layout-grid')!;
+  const grid = board.querySelector<SVGRectElement>('#layout-grid')!;
+  const gridPattern = board.querySelector<SVGPatternElement>('#layout-grid-pattern')!;
+  const gridLine = gridPattern.querySelector('path')!;
   const drawing = board.querySelector<SVGGElement>('g')!;
   const marker = board.querySelector<SVGCircleElement>('circle')!;
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
@@ -91,12 +96,40 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     return new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
   }
 
-  function move(piece: LayoutPiece, point: BoardPoint) {
+  function gridCoordinate(value: number, center: number, minimum: number, maximum: number) {
+    const low = Math.ceil((minimum - center) / gridStep);
+    const high = Math.floor((maximum - center) / gridStep);
+    if (!snapGrid.checked || low > high) return Math.max(minimum, Math.min(maximum, value));
+    const step = Math.max(low, Math.min(high, Math.round((value - center) / gridStep)));
+    return center + step * gridStep;
+  }
+
+  function updateGrid() {
+    grid.style.display = snapGrid.checked ? '' : 'none';
+    gridPattern.setAttribute('x', String(width / 2));
+    gridPattern.setAttribute('y', String(height / 2));
+    gridPattern.setAttribute('width', String(gridStep));
+    gridPattern.setAttribute('height', String(gridStep));
+    gridLine.setAttribute('d', `M ${gridStep} 0 H 0 V ${gridStep}`);
+    grid.setAttribute('x', String(-boardPadding));
+    grid.setAttribute('y', String(-boardPadding));
+    grid.setAttribute('width', String(width + 2 * boardPadding));
+    grid.setAttribute('height', String(height + 2 * boardPadding));
+  }
+
+  snapGrid.addEventListener('change', updateGrid);
+
+  function move(piece: LayoutPiece, point: BoardPoint, alignGrid = true) {
     piece.x = Math.max(-moveMargin, Math.min(width + moveMargin, point.x));
     piece.y = Math.max(-moveMargin, Math.min(height + moveMargin, point.y));
     const snap = snapPiece(piece, pieces, width, height, moveMargin);
     joint = snap?.joint;
-    if (snap) Object.assign(piece, snap.point, snap.dimensions);
+    if (snap) {
+      Object.assign(piece, snap.point, snap.dimensions);
+    } else if (alignGrid && snapGrid.checked) {
+      piece.x = gridCoordinate(piece.x, width / 2, -moveMargin, width + moveMargin);
+      piece.y = gridCoordinate(piece.y, height / 2, -moveMargin, height + moveMargin);
+    }
     render();
     onChange();
   }
@@ -172,8 +205,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     }
 
     const anchor = dragging.group[0].origin;
-    const dx = Math.max(dragging.minDelta.x, Math.min(dragging.maxDelta.x, destination.x - anchor.x));
-    const dy = Math.max(dragging.minDelta.y, Math.min(dragging.maxDelta.y, destination.y - anchor.y));
+    const dx = gridCoordinate(destination.x, width / 2, anchor.x + dragging.minDelta.x, anchor.x + dragging.maxDelta.x) - anchor.x;
+    const dy = gridCoordinate(destination.y, height / 2, anchor.y + dragging.minDelta.y, anchor.y + dragging.maxDelta.y) - anchor.y;
     for (const { piece, origin } of dragging.group) {
       piece.x = origin.x + dx;
       piece.y = origin.y + dy;
@@ -215,7 +248,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   rotate.addEventListener('click', () => {
     if (!selected) return;
     selected.rotation = (selected.rotation + 1) % 4;
-    move(selected, selected);
+    move(selected, selected, false);
   });
   remove.addEventListener('click', () => {
     if (!selected) return;
@@ -240,9 +273,11 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     board.style.aspectRatio = `${paddedWidth} / ${paddedHeight}`;
     boundary.setAttribute('width', String(width));
     boundary.setAttribute('height', String(height));
+    updateGrid();
     render();
   }
 
+  updateGrid();
   render();
   return { pieces, setSize };
 }

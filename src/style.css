@@ -146,3 +146,7 @@ select:focus-visible { outline: 2px solid var(--accent); }
 #layout-editor .selected .piece-disc { fill: var(--accent); }
 
 .invert-relief { margin-left: 14px; }
+
+.grid-toggle { margin-left: 14px; }
+#layout-grid { pointer-events: none; }
+#layout-editor .layout-grid-line { stroke: #7d888c; stroke-opacity: .36; stroke-width: .36; }

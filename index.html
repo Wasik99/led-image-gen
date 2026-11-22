@@ -34,6 +34,7 @@
             </div>
             <label class="group-move"><input id="move-connected" type="checkbox" /> Przesuwaj połączoną grupę</label>
             <label class="group-move invert-relief"><input id="invert-custom-relief" type="checkbox" /> Odwróć relief</label>
+            <label class="group-move grid-toggle"><input id="snap-layout-grid" type="checkbox" /> Przyciągaj do siatki</label>
             <p class="hint">Przeciągnij element z palety albo kliknij, by dodać go na środku. Zbliż pasujące końce, żeby je połączyć.</p>
             <div class="editor-workspace">
               <div class="piece-palette" role="group" aria-label="Elementy">
@@ -42,7 +43,13 @@
                 <button data-piece-kind="circle" draggable="true" type="button" aria-label="Koło" title="Koło"></button>
               </div>
               <svg id="layout-board" aria-label="Plansza do układania pasów" viewBox="-30 -30 160 160">
+                <defs>
+                  <pattern id="layout-grid-pattern" patternUnits="userSpaceOnUse">
+                    <path class="layout-grid-line" />
+                  </pattern>
+                </defs>
                 <rect class="image-boundary" width="100" height="100" />
+                <rect id="layout-grid" fill="url(#layout-grid-pattern)" style="display: none" />
                 <g></g>
                 <circle r="1.7" class="snap-marker" />
               </svg>
