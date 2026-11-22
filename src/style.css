@@ -67,8 +67,8 @@ select { width: 100%; padding: 10px; color: inherit; background: #151718; border
 select:focus-visible { outline: 2px solid var(--accent); }
 #apply-suggestion, #reroll { margin-top: 8px; background: #34393a; color: #f0ece5; }
 #apply-suggestion:hover, #reroll:hover:not(:disabled) { background: #414849; }
-#wave-settings, #random-settings, #arch-settings { margin: 18px 0 0; padding: 12px; border: 1px solid var(--line); border-radius: 7px; }
-#wave-settings legend, #random-settings legend, #arch-settings legend { padding: 0 5px; font-size: .88rem; }
+#wave-settings, #random-settings, #arch-settings, #yarn-settings { margin: 18px 0 0; padding: 12px; border: 1px solid var(--line); border-radius: 7px; }
+#wave-settings legend, #random-settings legend, #arch-settings legend, #yarn-settings legend { padding: 0 5px; font-size: .88rem; }
 .wave-range, .wave-direction { display: grid; gap: 5px; }
 .wave-range + .wave-range, .wave-direction { margin-top: 10px; }
 .wave-range span { display: flex; justify-content: space-between; gap: 5px; }

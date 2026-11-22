@@ -121,6 +121,13 @@
             </label>
             <button id="reroll" type="button">Losuj ponownie</button>
           </fieldset>
+          <fieldset id="yarn-settings" hidden>
+            <legend>Ustawienia włóczki</legend>
+            <label class="wave-range">
+              <span>Wielkość splotu <output id="yarn-scale-value" for="yarn-scale">100%</output></span>
+              <input id="yarn-scale" type="range" min="70" max="180" step="5" value="100" />
+            </label>
+          </fieldset>
           <fieldset id="arch-settings" hidden>
             <legend>Ustawienia łuków i pasów</legend>
             <label class="wave-direction">Trasa <select id="arch-route"></select></label>
