@@ -14,6 +14,8 @@ export interface LayoutPiece extends BoardPoint, PieceDimensions {
   rotation: number;
   length?: number;
   squareSeed?: number;
+  squareColumns?: number;
+  squareRows?: number;
 }
 
 export const defaultPieceHeight = 8;
@@ -21,10 +23,10 @@ export const defaultPieceHeight = 8;
 const straightHalfLength = 15;
 const radius = 16;
 export const circleRadius = 16;
-export const squarePatch = { columns: 6, rows: 4, cell: 6 };
+export const squarePatch = { columns: 6, rows: 4, cell: 6, maxCells: 16 };
 
 export function squarePatchElevation(seed: number) {
-  return createRandomSquares(squarePatch.columns, squarePatch.rows, { seed, maxHeight: 1 });
+  return createRandomSquares(squarePatch.maxCells, squarePatch.maxCells, { seed, maxHeight: 1 });
 }
 const railSpacing = 3.5;
 const railHalfWidth = 1.2;
@@ -172,16 +174,18 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
     piece,
     offsets: railOffsets(piece.railCount),
     halfLength: straightHalfLength * (piece.length ?? 1),
+    columns: piece.squareColumns ?? squarePatch.columns,
+    rows: piece.squareRows ?? squarePatch.rows,
     squares: piece.kind === 'squarePatch' ? squarePatchElevation(piece.squareSeed ?? 1) : undefined,
     extent: piece.size * (piece.kind === 'squarePatch'
-      ? squarePatch.columns * squarePatch.cell / 2
+      ? Math.max(piece.squareColumns ?? squarePatch.columns, piece.squareRows ?? squarePatch.rows) * squarePatch.cell / 2
       : Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
     const y = (height - sampleY) / scale;
     let elevation = 0;
-    for (const { piece, offsets, extent, halfLength, squares } of prepared) {
+    for (const { piece, offsets, extent, halfLength, squares, columns, rows } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
@@ -189,9 +193,9 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
       const localX = local.x / piece.size;
       const localY = local.y / piece.size;
       if (squares) {
-        const column = Math.floor(localX / squarePatch.cell + squarePatch.columns / 2);
-        const row = Math.floor(localY / squarePatch.cell + squarePatch.rows / 2);
-        if (column >= 0 && column < squarePatch.columns && row >= 0 && row < squarePatch.rows) {
+        const column = Math.floor(localX / squarePatch.cell + columns / 2);
+        const row = Math.floor(localY / squarePatch.cell + rows / 2);
+        if (column >= 0 && column < columns && row >= 0 && row < rows) {
           elevation = Math.max(elevation, piece.reliefHeight * squares(column, row));
         }
       } else {

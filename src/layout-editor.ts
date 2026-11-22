@@ -16,7 +16,7 @@ interface DragState {
   maxDelta: BoardPoint;
 }
 
-function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, length?: number, squareSeed = 1) {
+function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, length?: number, squareSeed = 1, columns = squarePatch.columns, rows = squarePatch.rows) {
   if (kind === 'circle') {
     const disc = document.createElementNS(svgNamespace, 'circle');
     disc.classList.add('piece-disc');
@@ -25,7 +25,7 @@ function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, 
     return;
   }
   if (kind === 'squarePatch') {
-    const { columns, rows, cell } = squarePatch;
+    const { cell } = squarePatch;
     const elevation = squarePatchElevation(squareSeed);
     for (let row = 0; row < rows; row++) {
       for (let column = 0; column < columns; column++) {
@@ -63,6 +63,9 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
+  const patchWidth = panel.querySelector<HTMLInputElement>('#patch-width')!;
+  const patchLength = panel.querySelector<HTMLInputElement>('#patch-length')!;
+  patchWidth.max = patchLength.max = String(squarePatch.maxCells);
   const length = panel.querySelector<HTMLInputElement>('#piece-length')!;
   const reliefHeight = panel.querySelector<HTMLInputElement>('#piece-relief-height')!;
   const railCount = panel.querySelector<HTMLInputElement>('#piece-rail-count')!;
@@ -105,7 +108,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
         hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
         group.append(hitArea);
       }
-      drawPieceShape(group, piece.kind, piece.railCount, piece.length, piece.squareSeed);
+      drawPieceShape(group, piece.kind, piece.railCount, piece.length, piece.squareSeed, piece.squareColumns, piece.squareRows);
       drawing.append(group);
     }
     marker.style.display = joint ? '' : 'none';
@@ -117,6 +120,9 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     rotate.disabled = !selected || selected.kind === 'circle';
     railCount.disabled = selected?.kind !== 'straight' && selected?.kind !== 'corner';
     length.disabled = selected?.kind !== 'straight';
+    patchWidth.disabled = patchLength.disabled = selected?.kind !== 'squarePatch';
+    patchWidth.value = patchWidth.disabled ? '' : String(selected?.squareColumns ?? squarePatch.columns);
+    patchLength.value = patchLength.disabled ? '' : String(selected?.squareRows ?? squarePatch.rows);
     length.value = selected?.kind === 'straight' ? String(Math.round((selected.length ?? 1) * 100)) : '';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
     reliefHeight.value = selected ? String(selected.reliefHeight) : '';
@@ -276,6 +282,19 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     render();
     onChange();
   }
+
+  function updatePatchDimensions() {
+    if (selected?.kind !== 'squarePatch') return;
+    if (patchWidth.checkValidity() && patchLength.checkValidity()) {
+      selected.squareColumns = patchWidth.valueAsNumber;
+      selected.squareRows = patchLength.valueAsNumber;
+      onChange();
+    }
+    render();
+  }
+
+  patchWidth.addEventListener('change', updatePatchDimensions);
+  patchLength.addEventListener('change', updatePatchDimensions);
 
   length.addEventListener('change', () => {
     if (selected?.kind !== 'straight') return;

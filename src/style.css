@@ -136,6 +136,8 @@ select:focus-visible { outline: 2px solid var(--accent); }
 
 .piece-settings { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 14px; margin-top: 10px; }
 .piece-settings label { display: grid; gap: 3px; }
+.piece-setting-slot { display: grid; width: 100%; }
+.piece-setting-slot label { grid-area: 1 / 1; }
 .piece-settings .rail-setting:has(> input:disabled) { visibility: hidden; }
 .piece-settings input { width: 86px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
 .piece-settings input:focus-visible { outline: 2px solid var(--accent); }
@@ -176,7 +178,7 @@ select:focus-visible { outline: 2px solid var(--accent); }
   .editor-workspace { grid-template-columns: auto minmax(0, 1fr); }
   .editor-inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
   .editor-actions { grid-template-columns: repeat(3, 42px); }
-  .editor-inspector .piece-settings label { width: min(100%, 140px); }
+  .editor-inspector .piece-settings > label, .piece-setting-slot { width: min(100%, 140px); }
 }
 
 #layout-editor .piece-square { fill: #c2b29d; cursor: move; }
