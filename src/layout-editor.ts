@@ -61,7 +61,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       marker.setAttribute('cx', String(joint.x));
       marker.setAttribute('cy', String(joint.y));
     }
-    rotate.disabled = remove.disabled = size.disabled = railCount.disabled = !selected;
+    remove.disabled = size.disabled = railCount.disabled = !selected;
+    rotate.disabled = !selected || selected.kind === 'circle';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
     railCount.value = selected ? String(selected.railCount) : '';
     groupSize.textContent = groupPieces.length > 1 ? `Elementy w połączonej grupie: ${groupPieces.length}` : '';
@@ -106,7 +107,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   });
   board.addEventListener('drop', (event) => {
     const kind = event.dataTransfer?.getData('application/x-led-piece');
-    if (kind !== 'straight' && kind !== 'corner') return;
+    if (kind !== 'straight' && kind !== 'corner' && kind !== 'circle') return;
     event.preventDefault();
     add(kind, boardPoint(event));
   });
