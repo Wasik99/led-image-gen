@@ -1,4 +1,6 @@
-export type PieceKind = 'straight' | 'corner' | 'circle';
+import { createRandomSquares } from './random-squares';
+
+export type PieceKind = 'straight' | 'corner' | 'circle' | 'squarePatch';
 export interface BoardPoint { x: number; y: number }
 export interface PieceDimensions {
   size: number;
@@ -11,6 +13,7 @@ export interface LayoutPiece extends BoardPoint, PieceDimensions {
   kind: PieceKind;
   rotation: number;
   length?: number;
+  squareSeed?: number;
 }
 
 export const defaultPieceHeight = 8;
@@ -18,6 +21,11 @@ export const defaultPieceHeight = 8;
 const straightHalfLength = 15;
 const radius = 16;
 export const circleRadius = 16;
+export const squarePatch = { columns: 6, rows: 4, cell: 6 };
+
+export function squarePatchElevation(seed: number) {
+  return createRandomSquares(squarePatch.columns, squarePatch.rows, { seed, maxHeight: 1 });
+}
 const railSpacing = 3.5;
 const railHalfWidth = 1.2;
 const snapDistance = 4;
@@ -30,6 +38,7 @@ const endpoints: Record<PieceKind, Endpoint[]> = {
   straight: [{ x: -straightHalfLength, y: 0, heading: 2 }, { x: straightHalfLength, y: 0, heading: 0 }],
   corner: [{ x: -8, y: 8, heading: 1 }, { x: 8, y: -8, heading: 0 }],
   circle: [],
+  squarePatch: [],
 };
 
 export function boardScale(width: number, height: number) {
@@ -163,18 +172,31 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
     piece,
     offsets: railOffsets(piece.railCount),
     halfLength: straightHalfLength * (piece.length ?? 1),
-    extent: piece.size * (Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
+    squares: piece.kind === 'squarePatch' ? squarePatchElevation(piece.squareSeed ?? 1) : undefined,
+    extent: piece.size * (piece.kind === 'squarePatch'
+      ? squarePatch.columns * squarePatch.cell / 2
+      : Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
     const y = (height - sampleY) / scale;
     let elevation = 0;
-    for (const { piece, offsets, extent, halfLength } of prepared) {
+    for (const { piece, offsets, extent, halfLength, squares } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
-      elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets, halfLength));
+      const localX = local.x / piece.size;
+      const localY = local.y / piece.size;
+      if (squares) {
+        const column = Math.floor(localX / squarePatch.cell + squarePatch.columns / 2);
+        const row = Math.floor(localY / squarePatch.cell + squarePatch.rows / 2);
+        if (column >= 0 && column < squarePatch.columns && row >= 0 && row < squarePatch.rows) {
+          elevation = Math.max(elevation, piece.reliefHeight * squares(column, row));
+        }
+      } else {
+        elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, localX, localY, offsets, halfLength));
+      }
     }
     return elevation;
   };

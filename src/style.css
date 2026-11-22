@@ -178,3 +178,6 @@ select:focus-visible { outline: 2px solid var(--accent); }
   .editor-actions { grid-template-columns: repeat(3, 42px); }
   .editor-inspector .piece-settings label { width: min(100%, 140px); }
 }
+
+#layout-editor .piece-square { fill: #c2b29d; cursor: move; }
+#layout-editor .selected .piece-square { fill: var(--accent); }

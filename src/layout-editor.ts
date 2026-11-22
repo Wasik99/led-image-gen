@@ -1,4 +1,4 @@
-import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHitWidth, railPath, railPaths, resizeStraightPiece, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHitWidth, railPath, railPaths, resizeStraightPiece, snapPiece, squarePatch, squarePatchElevation, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -16,12 +16,29 @@ interface DragState {
   maxDelta: BoardPoint;
 }
 
-function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, length?: number) {
+function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, length?: number, squareSeed = 1) {
   if (kind === 'circle') {
     const disc = document.createElementNS(svgNamespace, 'circle');
     disc.classList.add('piece-disc');
     disc.setAttribute('r', String(circleRadius));
     parent.append(disc);
+    return;
+  }
+  if (kind === 'squarePatch') {
+    const { columns, rows, cell } = squarePatch;
+    const elevation = squarePatchElevation(squareSeed);
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        const square = document.createElementNS(svgNamespace, 'rect');
+        square.classList.add('piece-square');
+        square.setAttribute('x', String((column - columns / 2) * cell));
+        square.setAttribute('y', String((row - rows / 2) * cell));
+        square.setAttribute('width', String(cell));
+        square.setAttribute('height', String(cell));
+        square.setAttribute('fill-opacity', String(0.3 + 0.7 * elevation(column, row)));
+        parent.append(square);
+      }
+    }
     return;
   }
   for (const path of railPaths({ kind, railCount, length })) {
@@ -81,14 +98,14 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       group.classList.toggle('selected', piece === selected);
       group.classList.toggle('connected', connected.has(piece));
       group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${piece.size})`);
-      if (piece.kind !== 'circle') {
+      if (piece.kind === 'straight' || piece.kind === 'corner') {
         const hitArea = document.createElementNS(svgNamespace, 'path');
         hitArea.classList.add('piece-hit-area');
         hitArea.setAttribute('d', railPath(piece.kind, 0, piece.length));
         hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
         group.append(hitArea);
       }
-      drawPieceShape(group, piece.kind, piece.railCount, piece.length);
+      drawPieceShape(group, piece.kind, piece.railCount, piece.length, piece.squareSeed);
       drawing.append(group);
     }
     marker.style.display = joint ? '' : 'none';
@@ -97,7 +114,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       marker.setAttribute('cy', String(joint.y));
     }
     remove.disabled = size.disabled = reliefHeight.disabled = !selected;
-    railCount.disabled = rotate.disabled = !selected || selected.kind === 'circle';
+    rotate.disabled = !selected || selected.kind === 'circle';
+    railCount.disabled = selected?.kind !== 'straight' && selected?.kind !== 'corner';
     length.disabled = selected?.kind !== 'straight';
     length.value = selected?.kind === 'straight' ? String(Math.round((selected.length ?? 1) * 100)) : '';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
@@ -154,6 +172,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   function add(kind: PieceKind, point: BoardPoint) {
     if (pieces.length >= pieceLimit) return;
     selected = { id: nextId++, kind, rotation: 0, size: 1.25, railCount: defaultRailCount, reliefHeight: defaultPieceHeight, ...point };
+    if (kind === 'squarePatch') selected.squareSeed = crypto.getRandomValues(new Uint32Array(1))[0];
     pieces.push(selected);
     move(selected, point);
   }
@@ -179,7 +198,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   });
   board.addEventListener('drop', (event) => {
     const kind = event.dataTransfer?.getData('application/x-led-piece');
-    if (kind !== 'straight' && kind !== 'corner' && kind !== 'circle') return;
+    if (kind !== 'straight' && kind !== 'corner' && kind !== 'circle' && kind !== 'squarePatch') return;
     event.preventDefault();
     add(kind, boardPoint(event));
   });
