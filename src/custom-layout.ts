@@ -23,7 +23,7 @@ export const defaultPieceHeight = 8;
 const straightHalfLength = 15;
 const radius = 16;
 export const circleRadius = 16;
-export const squarePatch = { columns: 6, rows: 4, cell: 6, maxCells: 16 };
+export const squarePatch = { columns: 6, rows: 4, cell: 6, cellMm: 10, maxCells: 16 };
 
 export function squarePatchElevation(seed: number) {
   return createRandomSquares(squarePatch.maxCells, squarePatch.maxCells, { seed, maxHeight: 1 });
@@ -45,6 +45,12 @@ const endpoints: Record<PieceKind, Endpoint[]> = {
 
 export function boardScale(width: number, height: number) {
   return Math.min(width, height) / 100;
+}
+
+export function pieceBoardScale(piece: LayoutPiece, millimetersPerUnit: number) {
+  return piece.kind === 'squarePatch'
+    ? squarePatch.cellMm / (squarePatch.cell * millimetersPerUnit)
+    : piece.size;
 }
 
 function railOffsets(count: number) {
@@ -177,7 +183,8 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
     columns: piece.squareColumns ?? squarePatch.columns,
     rows: piece.squareRows ?? squarePatch.rows,
     squares: piece.kind === 'squarePatch' ? squarePatchElevation(piece.squareSeed ?? 1) : undefined,
-    extent: piece.size * (piece.kind === 'squarePatch'
+    localScale: pieceBoardScale(piece, scale),
+    extent: pieceBoardScale(piece, scale) * (piece.kind === 'squarePatch'
       ? Math.max(piece.squareColumns ?? squarePatch.columns, piece.squareRows ?? squarePatch.rows) * squarePatch.cell / 2
       : Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
@@ -185,13 +192,13 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
     const x = sampleX / scale;
     const y = (height - sampleY) / scale;
     let elevation = 0;
-    for (const { piece, offsets, extent, halfLength, squares, columns, rows } of prepared) {
+    for (const { piece, offsets, extent, halfLength, squares, columns, rows, localScale } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
-      const localX = local.x / piece.size;
-      const localY = local.y / piece.size;
+      const localX = local.x / localScale;
+      const localY = local.y / localScale;
       if (squares) {
         const column = Math.floor(localX / squarePatch.cell + columns / 2);
         const row = Math.floor(localY / squarePatch.cell + rows / 2);

@@ -1,4 +1,4 @@
-import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHitWidth, railPath, railPaths, resizeStraightPiece, snapPiece, squarePatch, squarePatchElevation, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceBoardScale, pieceHitWidth, railPath, railPaths, resizeStraightPiece, snapPiece, squarePatch, squarePatchElevation, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -65,6 +65,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
   const patchWidth = panel.querySelector<HTMLInputElement>('#patch-width')!;
   const patchLength = panel.querySelector<HTMLInputElement>('#patch-length')!;
+  patchWidth.title = patchLength.title = `Jedno pole ma ${squarePatch.cellMm} mm boku.`;
   patchWidth.max = patchLength.max = String(squarePatch.maxCells);
   const length = panel.querySelector<HTMLInputElement>('#piece-length')!;
   const reliefHeight = panel.querySelector<HTMLInputElement>('#piece-relief-height')!;
@@ -72,6 +73,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const groupSize = panel.querySelector<HTMLElement>('#piece-group-size')!;
   const palette = [...panel.querySelectorAll<HTMLButtonElement>('[data-piece-kind]')];
   const pieces: LayoutPiece[] = [];
+  let millimetersPerUnit = 1;
   let width = 100;
   let height = 100;
   let nextId = 0;
@@ -100,7 +102,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       group.dataset.piece = String(piece.id);
       group.classList.toggle('selected', piece === selected);
       group.classList.toggle('connected', connected.has(piece));
-      group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${piece.size})`);
+      group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${pieceBoardScale(piece, millimetersPerUnit)})`);
       if (piece.kind === 'straight' || piece.kind === 'corner') {
         const hitArea = document.createElementNS(svgNamespace, 'path');
         hitArea.classList.add('piece-hit-area');
@@ -116,7 +118,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       marker.setAttribute('cx', String(joint.x));
       marker.setAttribute('cy', String(joint.y));
     }
-    remove.disabled = size.disabled = reliefHeight.disabled = !selected;
+    remove.disabled = reliefHeight.disabled = !selected;
+    size.disabled = !selected || selected.kind === 'squarePatch';
     rotate.disabled = !selected || selected.kind === 'circle';
     railCount.disabled = selected?.kind !== 'straight' && selected?.kind !== 'corner';
     length.disabled = selected?.kind !== 'straight';
@@ -124,7 +127,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     patchWidth.value = patchWidth.disabled ? '' : String(selected?.squareColumns ?? squarePatch.columns);
     patchLength.value = patchLength.disabled ? '' : String(selected?.squareRows ?? squarePatch.rows);
     length.value = selected?.kind === 'straight' ? String(Math.round((selected.length ?? 1) * 100)) : '';
-    size.value = selected ? String(Math.round(selected.size * 100)) : '';
+    size.value = selected && !size.disabled ? String(Math.round(selected.size * 100)) : '';
     reliefHeight.value = selected ? String(selected.reliefHeight) : '';
     railCount.value = selected && !railCount.disabled ? String(selected.railCount) : '';
     groupSize.textContent = groupPieces.length > 1 ? `Elementy w połączonej grupie: ${groupPieces.length}` : '';
@@ -266,7 +269,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       render();
       return;
     }
-    const newSize = size.valueAsNumber / 100;
+    const newSize = size.disabled ? selected.size : size.valueAsNumber / 100;
     const newRailCount = railCount.disabled ? selected.railCount : railCount.valueAsNumber;
     const group = connectedPieces(selected, pieces);
     const factor = newSize / selected.size;
@@ -345,7 +348,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     const scale = boardScale(imageWidth, imageHeight);
     const nextWidth = imageWidth / scale;
     const nextHeight = imageHeight / scale;
-    if (width === nextWidth && height === nextHeight) return;
+    if (width === nextWidth && height === nextHeight && millimetersPerUnit === scale) return;
+    millimetersPerUnit = scale;
     joint = undefined;
     width = nextWidth;
     height = nextHeight;
