@@ -33,13 +33,13 @@ function toSolid(vertices: Float32Array) {
 }
 
 export function applySolidCircles(
-  base: Float32Array, side: number, referenceHeight: number, circles: SolidCircle[], inverted: boolean,
+  base: Float32Array, side: number, referenceHeight: number, circles: SolidCircle[], inverted: boolean, segments: number,
 ) {
   const body = toSolid(base);
   const clip = engine.Manifold.cube([side, side, referenceHeight + Math.max(...circles.map(circle => circle.height)) + 1]);
   const inserts = circles.map(({ x, y, radius, height }) => {
     // Extend across the reference surface for both joining and cutting.
-    const cylinder = engine.Manifold.cylinder(height + 1, radius, radius, 192);
+    const cylinder = engine.Manifold.cylinder(height + 1, radius, radius, segments);
     const positioned = cylinder.translate([x, y, inverted ? referenceHeight - height : referenceHeight - 1]);
     const clipped = positioned.intersect(clip);
     cylinder.delete();

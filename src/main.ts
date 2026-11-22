@@ -45,6 +45,7 @@ const download = document.querySelector<HTMLButtonElement>('#download')!;
 
 let randomSeed = crypto.getRandomValues(new Uint32Array(1))[0];
 let tiles: Tile[] = [];
+let buildExportTiles: (() => Tile[]) | undefined;
 let suggestion: ImageSize | undefined;
 let preview: ReturnType<typeof createPreview> | undefined;
 
@@ -94,7 +95,14 @@ function renderLayout() {
   wavePanel.hidden = pattern !== 'squareWave';
   waveHeightValue.value = `${waveSettings.maxHeight} mm`;
   waveDensityValue.value = String(waveSettings.density);
-  tiles = side ? generateTiles(width, height, side, pattern, { wave: waveSettings, random, arches, customPieces: editor.pieces, invertCustomRelief: invertCustomRelief.checked, grooves: grooves.checked }) : [];
+  const settings = {
+    wave: waveSettings, random, arches, customPieces: editor.pieces,
+    invertCustomRelief: invertCustomRelief.checked, grooves: grooves.checked,
+  };
+  buildExportTiles = side && pattern === 'customLayout'
+    ? () => generateTiles(width, height, side, pattern, settings)
+    : undefined;
+  tiles = side ? generateTiles(width, height, side, pattern, settings, 'preview') : [];
   download.disabled = tiles.length === 0;
   count.textContent = tiles.length ? String(tiles.length) : '—';
   info.textContent = tiles.length
@@ -171,7 +179,7 @@ applySuggestion.addEventListener('click', () => {
   update();
 });
 download.addEventListener('click', () => {
-  const blob = new Blob([exportTiles(tiles)], { type: 'application/zip' });
+  const blob = new Blob([exportTiles(buildExportTiles?.() ?? tiles)], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
