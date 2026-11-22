@@ -1,5 +1,5 @@
-import { boardScale, circleRadius } from './custom-layout';
-import { applySolidCircles } from './solid-circles';
+import { boardScale, circleRadius, rotatePoint, squarePatch, squarePatchCells } from './custom-layout';
+import { applySolidRelief, type SolidRelief } from './solid-relief';
 import { MAX_DIMENSION, MIN_TILE_SIZE } from './layout';
 import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type PatternSettings } from './patterns';
 
@@ -211,13 +211,33 @@ export function generateTiles(
     const scale = boardScale(width, height);
     const inverted = pattern === 'customLayout' && Boolean(settings.invertCustomRelief);
     const referenceHeight = BASE_HEIGHT + (inverted ? Math.max(0, ...pieces.map(piece => piece.reliefHeight)) : 0);
-    const circles = pattern === 'customLayout' ? pieces.filter(piece => piece.kind === 'circle').map(piece => ({
-      x: piece.x * scale,
-      y: height - piece.y * scale,
-      radius: circleRadius * piece.size * scale,
-      height: piece.reliefHeight,
-    })) : [];
-    const flatBase = pattern === 'customLayout' && pieces.every(piece => piece.kind === 'circle')
+    const shapes: SolidRelief[] = [];
+    if (pattern === 'customLayout') {
+      for (const piece of pieces) {
+        if (piece.kind === 'circle') {
+          shapes.push({
+            x: piece.x * scale, y: height - piece.y * scale,
+            radius: circleRadius * piece.size * scale, height: piece.reliefHeight,
+          });
+        } else if (piece.kind === 'squarePatch') {
+          const cells = squarePatchCells(
+            piece.squareSeed ?? 1, piece.squareColumns ?? squarePatch.columns,
+            piece.squareRows ?? squarePatch.rows, squarePatch.cellMm,
+          );
+          for (const cell of cells) {
+            const offset = rotatePoint(cell, piece.rotation);
+            const rise = cell.rise * piece.reliefHeight;
+            if (rise <= 0) continue;
+            shapes.push({
+              x: piece.x * scale + offset.x,
+              y: height - piece.y * scale - offset.y,
+              width: cell.width, depth: cell.depth, rotation: -piece.rotation, height: rise,
+            });
+          }
+        }
+      }
+    }
+    const flatBase = pattern === 'customLayout' && pieces.every(piece => piece.kind === 'circle' || piece.kind === 'squarePatch')
       ? buildTileMesh([[referenceHeight]], side) : undefined;
     buildMesh = (column, row) => {
       const originX = column * side;
@@ -228,9 +248,13 @@ export function generateTiles(
         const relief = sample(globalX, globalY);
         return referenceHeight + (inverted ? -relief : relief);
       });
-      const nearby = circles.map(circle => ({ ...circle, x: circle.x - originX, y: circle.y - originY }))
-        .filter(({ x, y, radius }) => x + radius > 0 && x - radius < side && y + radius > 0 && y - radius < side);
-      return nearby.length ? applySolidCircles(base.vertices, side, referenceHeight, nearby, inverted) : base;
+      const nearby = shapes.map(shape => ({ ...shape, x: shape.x - originX, y: shape.y - originY }))
+        .filter(shape => {
+          const { x, y } = shape;
+          const extent = 'radius' in shape ? shape.radius : Math.hypot(shape.width, shape.depth) / 2;
+          return x + extent > 0 && x - extent < side && y + extent > 0 && y - extent < side;
+        });
+      return nearby.length ? applySolidRelief(base.vertices, side, referenceHeight, nearby, inverted) : base;
     };
   } else if (pattern === 'smooth') {
     const mesh = buildTileMesh([[BASE_HEIGHT]], side);

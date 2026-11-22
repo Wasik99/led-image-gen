@@ -1,4 +1,4 @@
-import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceBoardScale, pieceHitWidth, railPath, railPaths, resizeStraightPiece, rotatePoint, snapPiece, squarePatch, squarePatchElevation, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceBoardScale, pieceHitWidth, railPath, railPaths, resizeStraightPiece, rotatePoint, snapPiece, squarePatch, squarePatchCells, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -31,19 +31,22 @@ function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, 
     return;
   }
   if (kind === 'squarePatch') {
-    const { cell } = squarePatch;
-    const elevation = squarePatchElevation(squareSeed);
-    for (let row = 0; row < rows; row++) {
-      for (let column = 0; column < columns; column++) {
-        const square = document.createElementNS(svgNamespace, 'rect');
-        square.classList.add('piece-square');
-        square.setAttribute('x', String((column - columns / 2) * cell));
-        square.setAttribute('y', String((row - rows / 2) * cell));
-        square.setAttribute('width', String(cell));
-        square.setAttribute('height', String(cell));
-        square.setAttribute('fill-opacity', String(0.3 + 0.7 * elevation(column, row)));
-        parent.append(square);
-      }
+    const hitArea = document.createElementNS(svgNamespace, 'rect');
+    hitArea.classList.add('square-patch-hit-area');
+    hitArea.setAttribute('x', String(-columns * squarePatch.cell / 2));
+    hitArea.setAttribute('y', String(-rows * squarePatch.cell / 2));
+    hitArea.setAttribute('width', String(columns * squarePatch.cell));
+    hitArea.setAttribute('height', String(rows * squarePatch.cell));
+    parent.append(hitArea);
+    for (const cell of squarePatchCells(squareSeed, columns, rows, squarePatch.cell)) {
+      const square = document.createElementNS(svgNamespace, 'rect');
+      square.classList.add('piece-square');
+      square.setAttribute('x', String(cell.x - cell.width / 2));
+      square.setAttribute('y', String(cell.y - cell.depth / 2));
+      square.setAttribute('width', String(cell.width));
+      square.setAttribute('height', String(cell.depth));
+      square.setAttribute('fill-opacity', String(0.3 + 0.7 * cell.rise));
+      parent.append(square);
     }
     return;
   }

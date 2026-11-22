@@ -4,12 +4,16 @@ import wasmUrl from 'manifold-3d/manifold.wasm?url';
 const engine = await createManifold({ locateFile: () => wasmUrl });
 engine.setup();
 
-export interface SolidCircle {
+interface PositionedRelief {
   x: number;
   y: number;
-  radius: number;
   height: number;
 }
+
+export type SolidRelief = PositionedRelief & (
+  | { radius: number }
+  | { width: number; depth: number; rotation: number }
+);
 
 function toSolid(vertices: Float32Array) {
   const lookup = new Map<string, number>();
@@ -32,17 +36,27 @@ function toSolid(vertices: Float32Array) {
   }));
 }
 
-export function applySolidCircles(
-  base: Float32Array, side: number, referenceHeight: number, circles: SolidCircle[], inverted: boolean,
+export function applySolidRelief(
+  base: Float32Array, side: number, referenceHeight: number, shapes: SolidRelief[], inverted: boolean,
 ) {
   const body = toSolid(base);
-  const clip = engine.Manifold.cube([side, side, referenceHeight + Math.max(...circles.map(circle => circle.height)) + 1]);
-  const inserts = circles.map(({ x, y, radius, height }) => {
-    // Extend across the reference surface for both joining and cutting.
-    const cylinder = engine.Manifold.cylinder(height + 1, radius, radius, 192);
-    const positioned = cylinder.translate([x, y, inverted ? referenceHeight - height : referenceHeight - 1]);
+  const clip = engine.Manifold.cube([side, side, referenceHeight + Math.max(...shapes.map(shape => shape.height)) + 1]);
+  const inserts = shapes.map(shape => {
+    const { x, y, height } = shape;
+    const z = inverted ? referenceHeight - height : referenceHeight - 1;
+    let positioned;
+    if ('radius' in shape) {
+      const cylinder = engine.Manifold.cylinder(height + 1, shape.radius, shape.radius, 192);
+      positioned = cylinder.translate([x, y, z]);
+      cylinder.delete();
+    } else {
+      const box = engine.Manifold.cube([shape.width, shape.depth, height + 1], true);
+      const oriented = box.rotate([0, 0, shape.rotation]);
+      positioned = oriented.translate([x, y, z + (height + 1) / 2]);
+      oriented.delete();
+      box.delete();
+    }
     const clipped = positioned.intersect(clip);
-    cylinder.delete();
     positioned.delete();
     return clipped;
   });

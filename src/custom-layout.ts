@@ -23,11 +23,28 @@ export const defaultPieceHeight = 8;
 const straightHalfLength = 15;
 const radius = 16;
 export const circleRadius = 16;
-export const squarePatch = { columns: 6, rows: 4, cell: 6, cellMm: 10, maxCells: 16 };
+export const squarePatch = { columns: 6, rows: 4, cell: 6, cellMm: 10, maxCells: 16, grooveMm: 0.6 };
 
-export function squarePatchElevation(seed: number) {
+function squarePatchElevation(seed: number) {
   return createRandomSquares(squarePatch.maxCells, squarePatch.maxCells, { seed, maxHeight: 1 });
 }
+export function squarePatchCells(seed: number, columns: number, rows: number, cellSize: number) {
+  const elevation = squarePatchElevation(seed);
+  const inset = squarePatch.grooveMm / squarePatch.cellMm * cellSize / 2;
+  return Array.from({ length: columns * rows }, (_, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const left = (column - columns / 2) * cellSize + (column === 0 ? 0 : inset);
+    const right = (column + 1 - columns / 2) * cellSize - (column === columns - 1 ? 0 : inset);
+    const top = (row - rows / 2) * cellSize + (row === 0 ? 0 : inset);
+    const bottom = (row + 1 - rows / 2) * cellSize - (row === rows - 1 ? 0 : inset);
+    return {
+      x: (left + right) / 2, y: (top + bottom) / 2,
+      width: right - left, depth: bottom - top, rise: elevation(column, row),
+    };
+  });
+}
+
 const railSpacing = 3.5;
 const railHalfWidth = 1.2;
 const snapDistance = 4;
@@ -176,38 +193,23 @@ function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[]
 
 export function createLayoutSurface(width: number, height: number, pieces: readonly LayoutPiece[]) {
   const scale = boardScale(width, height);
-  const prepared = pieces.filter(piece => piece.kind !== 'circle').map(piece => ({
+  const prepared = pieces.filter(piece => piece.kind === 'straight' || piece.kind === 'corner').map(piece => ({
     piece,
     offsets: railOffsets(piece.railCount),
     halfLength: straightHalfLength * (piece.length ?? 1),
-    columns: piece.squareColumns ?? squarePatch.columns,
-    rows: piece.squareRows ?? squarePatch.rows,
-    squares: piece.kind === 'squarePatch' ? squarePatchElevation(piece.squareSeed ?? 1) : undefined,
-    localScale: pieceBoardScale(piece, scale),
-    extent: pieceBoardScale(piece, scale) * (piece.kind === 'squarePatch'
-      ? Math.max(piece.squareColumns ?? squarePatch.columns, piece.squareRows ?? squarePatch.rows) * squarePatch.cell / 2
-      : Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
+    extent: piece.size * (Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
     const y = (height - sampleY) / scale;
     let elevation = 0;
-    for (const { piece, offsets, extent, halfLength, squares, columns, rows, localScale } of prepared) {
+    for (const { piece, offsets, extent, halfLength } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.max(Math.abs(dx), Math.abs(dy)) > extent * Math.SQRT2) continue;
       const local = rotatePoint({ x: dx, y: dy }, -piece.rotation);
-      const localX = local.x / localScale;
-      const localY = local.y / localScale;
-      if (squares) {
-        const column = Math.floor(localX / squarePatch.cell + columns / 2);
-        const row = Math.floor(localY / squarePatch.cell + rows / 2);
-        if (column >= 0 && column < columns && row >= 0 && row < rows) {
-          elevation = Math.max(elevation, piece.reliefHeight * squares(column, row));
-        }
-      } else {
-        elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, localX, localY, offsets, halfLength));
-      }
+      elevation = Math.max(elevation, piece.reliefHeight *
+        reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets, halfLength));
     }
     return elevation;
   };

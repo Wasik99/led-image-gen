@@ -187,3 +187,5 @@ select:focus-visible { outline: 2px solid var(--accent); }
 #rotate-handle circle { fill: #292d2f; stroke: var(--accent); stroke-width: .5; }
 #layout-editor #rotate-handle path { stroke: var(--accent); stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 #rotate-handle:focus-visible circle { stroke: #fff; }
+
+#layout-editor .square-patch-hit-area { fill: transparent; cursor: move; }
