@@ -13,6 +13,8 @@ export interface LayoutPiece extends BoardPoint, PieceDimensions {
 
 const straightHalfLength = 15;
 const radius = 16;
+export const circleRadius = 16;
+const circleBevel = 0.7;
 const railSpacing = 3.5;
 const railHalfWidth = 1.2;
 const snapDistance = 4;
@@ -41,9 +43,6 @@ export function pieceHitWidth(count: number) {
 
 export function railPath(kind: PieceKind, offset = 0): string {
   const railRadius = radius + offset;
-  if (kind === 'circle') {
-    return `M -${railRadius} 0 A ${railRadius} ${railRadius} 0 0 1 ${railRadius} 0 A ${railRadius} ${railRadius} 0 0 1 -${railRadius} 0 Z`;
-  }
   return kind === 'straight'
     ? `M -${straightHalfLength} ${offset} H ${straightHalfLength}`
     : `M ${8 - railRadius} 8 A ${railRadius} ${railRadius} 0 0 1 8 ${8 - railRadius}`;
@@ -128,7 +127,6 @@ function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[]
   function distanceToRail(offset: number) {
     if (kind === 'straight') return Math.hypot(Math.max(0, Math.abs(x) - straightHalfLength), y - offset);
     const r = radius + offset;
-    if (kind === 'circle') return Math.abs(Math.hypot(x, y) - r);
     const dx = 8 - x;
     const dy = 8 - y;
     if (dx >= 0 && dy >= 0) return Math.abs(Math.hypot(dx, dy) - r);
@@ -145,7 +143,9 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
   const prepared = pieces.map(piece => ({
     piece,
     offsets: railOffsets(piece.railCount),
-    extent: (Math.max(straightHalfLength, (piece.kind === 'circle' ? radius : 8) + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth) * piece.size,
+    extent: piece.size * (piece.kind === 'circle'
+      ? circleRadius
+      : Math.max(straightHalfLength, 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
@@ -155,6 +155,12 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
+      if (piece.kind === 'circle') {
+        const edgeDistance = circleRadius - Math.hypot(dx, dy) / piece.size;
+        const rise = Math.max(0, Math.min(1, edgeDistance / circleBevel));
+        elevation = Math.max(elevation, 8 * rise);
+        continue;
+      }
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
       elevation = Math.max(elevation, reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets));
     }

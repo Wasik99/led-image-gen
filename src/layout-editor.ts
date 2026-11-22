@@ -1,4 +1,4 @@
-import { boardScale, connectedPieces, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -43,16 +43,23 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       group.classList.toggle('selected', piece === selected);
       group.classList.toggle('connected', connected.has(piece));
       group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${piece.size})`);
-      const hitArea = document.createElementNS(svgNamespace, 'path');
-      hitArea.classList.add('piece-hit-area');
-      hitArea.setAttribute('d', railPath(piece.kind));
-      hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
-      group.append(hitArea);
-      for (const path of railPaths(piece)) {
-        const rail = document.createElementNS(svgNamespace, 'path');
-        rail.classList.add('piece-rail');
-        rail.setAttribute('d', path);
-        group.append(rail);
+      if (piece.kind === 'circle') {
+        const disc = document.createElementNS(svgNamespace, 'circle');
+        disc.classList.add('piece-disc');
+        disc.setAttribute('r', String(circleRadius));
+        group.append(disc);
+      } else {
+        const hitArea = document.createElementNS(svgNamespace, 'path');
+        hitArea.classList.add('piece-hit-area');
+        hitArea.setAttribute('d', railPath(piece.kind));
+        hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
+        group.append(hitArea);
+        for (const path of railPaths(piece)) {
+          const rail = document.createElementNS(svgNamespace, 'path');
+          rail.classList.add('piece-rail');
+          rail.setAttribute('d', path);
+          group.append(rail);
+        }
       }
       drawing.append(group);
     }
@@ -61,10 +68,10 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       marker.setAttribute('cx', String(joint.x));
       marker.setAttribute('cy', String(joint.y));
     }
-    remove.disabled = size.disabled = railCount.disabled = !selected;
-    rotate.disabled = !selected || selected.kind === 'circle';
+    remove.disabled = size.disabled = !selected;
+    railCount.disabled = rotate.disabled = !selected || selected.kind === 'circle';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
-    railCount.value = selected ? String(selected.railCount) : '';
+    railCount.value = selected && !railCount.disabled ? String(selected.railCount) : '';
     groupSize.textContent = groupPieces.length > 1 ? `Elementy w połączonej grupie: ${groupPieces.length}` : '';
     for (const button of palette) button.disabled = pieces.length >= pieceLimit;
   }
@@ -170,7 +177,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       return;
     }
     const newSize = size.valueAsNumber / 100;
-    const newRailCount = railCount.valueAsNumber;
+    const newRailCount = railCount.disabled ? selected.railCount : railCount.valueAsNumber;
     const group = connectedPieces(selected, pieces);
     const factor = newSize / selected.size;
     const anchor = { x: selected.x, y: selected.y };

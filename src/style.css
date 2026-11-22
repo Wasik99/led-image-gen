@@ -112,3 +112,6 @@ select:focus-visible { outline: 2px solid var(--accent); }
 .piece-settings label { display: grid; gap: 3px; }
 .piece-settings input { width: 86px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
 .piece-settings input:focus-visible { outline: 2px solid var(--accent); }
+
+#layout-editor .piece-disc { fill: #c2b29d; cursor: move; }
+#layout-editor .selected .piece-disc { fill: var(--accent); }
