@@ -50,7 +50,7 @@ export function railPath(kind: PieceKind, offset = 0): string {
     : `M ${8 - railRadius} 8 A ${railRadius} ${railRadius} 0 0 1 8 ${8 - railRadius}`;
 }
 
-export function railPaths(piece: LayoutPiece): string[] {
+export function railPaths(piece: Pick<LayoutPiece, 'kind' | 'railCount'>): string[] {
   return railOffsets(piece.railCount).map(offset => railPath(piece.kind, offset));
 }
 

@@ -3,6 +3,7 @@ import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHit
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
 const boardPadding = 30;
+const defaultRailCount = 5;
 const moveMargin = 24;
 
 interface DragState {
@@ -14,8 +15,24 @@ interface DragState {
   maxDelta: BoardPoint;
 }
 
+function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number) {
+  if (kind === 'circle') {
+    const disc = document.createElementNS(svgNamespace, 'circle');
+    disc.classList.add('piece-disc');
+    disc.setAttribute('r', String(circleRadius));
+    parent.append(disc);
+    return;
+  }
+  for (const path of railPaths({ kind, railCount })) {
+    const rail = document.createElementNS(svgNamespace, 'path');
+    rail.classList.add('piece-rail');
+    rail.setAttribute('d', path);
+    parent.append(rail);
+  }
+}
+
 export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
-  const board = panel.querySelector<SVGSVGElement>('svg')!;
+  const board = panel.querySelector<SVGSVGElement>('#layout-board')!;
   const boundary = board.querySelector<SVGRectElement>('rect')!;
   const moveConnected = panel.querySelector<HTMLInputElement>('#move-connected')!;
   const drawing = board.querySelector<SVGGElement>('g')!;
@@ -45,24 +62,14 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       group.classList.toggle('selected', piece === selected);
       group.classList.toggle('connected', connected.has(piece));
       group.setAttribute('transform', `translate(${piece.x} ${piece.y}) rotate(${piece.rotation * 90}) scale(${piece.size})`);
-      if (piece.kind === 'circle') {
-        const disc = document.createElementNS(svgNamespace, 'circle');
-        disc.classList.add('piece-disc');
-        disc.setAttribute('r', String(circleRadius));
-        group.append(disc);
-      } else {
+      if (piece.kind !== 'circle') {
         const hitArea = document.createElementNS(svgNamespace, 'path');
         hitArea.classList.add('piece-hit-area');
         hitArea.setAttribute('d', railPath(piece.kind));
         hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
         group.append(hitArea);
-        for (const path of railPaths(piece)) {
-          const rail = document.createElementNS(svgNamespace, 'path');
-          rail.classList.add('piece-rail');
-          rail.setAttribute('d', path);
-          group.append(rail);
-        }
       }
+      drawPieceShape(group, piece.kind, piece.railCount);
       drawing.append(group);
     }
     marker.style.display = joint ? '' : 'none';
@@ -96,13 +103,18 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   function add(kind: PieceKind, point: BoardPoint) {
     if (pieces.length >= pieceLimit) return;
-    selected = { id: nextId++, kind, rotation: 0, size: 1.25, railCount: 5, reliefHeight: defaultPieceHeight, ...point };
+    selected = { id: nextId++, kind, rotation: 0, size: 1.25, railCount: defaultRailCount, reliefHeight: defaultPieceHeight, ...point };
     pieces.push(selected);
     move(selected, point);
   }
 
   for (const button of palette) {
     const kind = button.dataset.pieceKind as PieceKind;
+    const icon = document.createElementNS(svgNamespace, 'svg');
+    icon.setAttribute('viewBox', '-20 -20 40 40');
+    icon.setAttribute('aria-hidden', 'true');
+    drawPieceShape(icon, kind, defaultRailCount);
+    button.append(icon);
     button.addEventListener('click', () => {
       const offset = (pieces.length % 5) * 4;
       add(kind, { x: width / 2 + offset, y: height / 2 + offset });
