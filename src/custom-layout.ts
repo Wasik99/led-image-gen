@@ -97,7 +97,7 @@ export function connectedPieces(selected: LayoutPiece, pieces: LayoutPiece[]): L
   return group;
 }
 
-export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: number, height: number) {
+export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: number, height: number, margin: number) {
   let best: { point: BoardPoint; joint: BoardPoint; dimensions: PieceDimensions } | undefined;
   let bestDistance = snapDistance;
   const originalEnds = pieceEndpoints(piece);
@@ -109,7 +109,7 @@ export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: numb
       for (const [index, end] of adjustedEnds.entries()) {
         if (!faceEachOther(end, joint)) continue;
         const point = { x: piece.x + joint.x - end.x, y: piece.y + joint.y - end.y };
-        if (point.x < 0 || point.y < 0 || point.x > width || point.y > height) continue;
+        if (point.x < -margin || point.y < -margin || point.x > width + margin || point.y > height + margin) continue;
         const original = originalEnds[index];
         const distance = Math.min(
           Math.hypot(end.x - joint.x, end.y - joint.y),

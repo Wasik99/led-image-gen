@@ -2,7 +2,8 @@ import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHit
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
-const boardPadding = 3;
+const boardPadding = 30;
+const moveMargin = 24;
 
 interface DragState {
   pointerId: number;
@@ -84,9 +85,9 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   }
 
   function move(piece: LayoutPiece, point: BoardPoint) {
-    piece.x = Math.max(0, Math.min(width, point.x));
-    piece.y = Math.max(0, Math.min(height, point.y));
-    const snap = snapPiece(piece, pieces, width, height);
+    piece.x = Math.max(-moveMargin, Math.min(width + moveMargin, point.x));
+    piece.y = Math.max(-moveMargin, Math.min(height + moveMargin, point.y));
+    const snap = snapPiece(piece, pieces, width, height, moveMargin);
     joint = snap?.joint;
     if (snap) Object.assign(piece, snap.point, snap.dimensions);
     render();
@@ -136,12 +137,12 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
         dimensions: { size: selected.size, railCount: selected.railCount, reliefHeight: selected.reliefHeight },
         group,
         minDelta: {
-          x: Math.min(0, -Math.min(...group.map(({ origin }) => origin.x))),
-          y: Math.min(0, -Math.min(...group.map(({ origin }) => origin.y))),
+          x: Math.min(0, -moveMargin - Math.min(...group.map(({ origin }) => origin.x))),
+          y: Math.min(0, -moveMargin - Math.min(...group.map(({ origin }) => origin.y))),
         },
         maxDelta: {
-          x: Math.max(0, width - Math.max(...group.map(({ origin }) => origin.x))),
-          y: Math.max(0, height - Math.max(...group.map(({ origin }) => origin.y))),
+          x: Math.max(0, width + moveMargin - Math.max(...group.map(({ origin }) => origin.x))),
+          y: Math.max(0, height + moveMargin - Math.max(...group.map(({ origin }) => origin.y))),
         },
       };
       board.setPointerCapture(event.pointerId);
