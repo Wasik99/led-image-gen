@@ -7,6 +7,7 @@ export const BASE_HEIGHT = 5;
 const GROOVE_BEVEL = 0.6;
 const SURFACE_STEPS_SHORT_SIDE = 280;
 const CUSTOM_CURVE_STEPS_SHORT_SIDE = 420;
+const YARN_STEPS_SHORT_SIDE = 350;
 const SURFACE_CELL_BUDGET = 320_000;
 
 export interface Tile {
@@ -206,9 +207,11 @@ export function generateTiles(
   if ('createSurface' in surface) {
     const pieces = settings.customPieces ?? [];
     const hasCustomCurve = pattern === 'customLayout' && pieces.some(piece => piece.kind === 'corner');
-    const shortSideSteps = hasCustomCurve ? CUSTOM_CURVE_STEPS_SHORT_SIDE : SURFACE_STEPS_SHORT_SIDE;
-    const detail = pattern === 'yarn' ? Math.max(1, 100 / (settings.yarnScale ?? 100)) : 1;
-    const targetSteps = Math.ceil(detail * shortSideSteps * side / Math.min(width, height));
+    let shortSideSteps = hasCustomCurve ? CUSTOM_CURVE_STEPS_SHORT_SIDE : SURFACE_STEPS_SHORT_SIDE;
+    if (pattern === 'yarn') {
+      shortSideSteps = YARN_STEPS_SHORT_SIDE * Math.max(1, 100 / (settings.yarnScale ?? 100));
+    }
+    const targetSteps = Math.ceil(shortSideSteps * side / Math.min(width, height));
     // Keep a common spacing across seams and bound mesh size for very long panels.
     const maxSteps = Math.floor(Math.sqrt(SURFACE_CELL_BUDGET / (columns * rows)));
     const steps = Math.min(targetSteps, maxSteps);
