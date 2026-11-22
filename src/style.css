@@ -85,12 +85,9 @@ select:focus-visible { outline: 2px solid var(--accent); }
 .arch-shift { margin-top: 10px; }
 
 #layout-editor { padding: 14px 18px; border-bottom: 1px solid var(--line); }
-.editor-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.editor-tools h2 { margin-right: auto; }
-.editor-tools button { width: auto; padding: 7px 10px; font-size: .8rem; }
 .editor-workspace {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) 166px;
   margin-top: 10px;
   border: 1px solid var(--line);
   background: #151718;
@@ -145,10 +142,38 @@ select:focus-visible { outline: 2px solid var(--accent); }
 #layout-editor .piece-disc { fill: #c2b29d; cursor: move; }
 #layout-editor .selected .piece-disc { fill: var(--accent); }
 
-.invert-relief { margin-left: 14px; }
 
-.grid-toggle { margin-left: 14px; }
 #layout-grid { pointer-events: none; }
 #layout-editor .layout-grid-line { stroke: #7d888c; stroke-opacity: .36; stroke-width: .36; }
 
 .piece-settings label[hidden] { display: none; }
+
+.editor-inspector {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 10px;
+  border-left: 1px solid var(--line);
+  background: #202324;
+}
+.editor-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.editor-actions button {
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  color: #f0ece5;
+  background: #292d2f;
+  border: 1px solid var(--line);
+}
+.editor-actions button:hover:not(:disabled) { background: #414849; }
+.editor-actions svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.editor-inspector .piece-settings { margin: 0; gap: 8px; }
+.editor-inspector .piece-settings label, .editor-inspector .piece-settings input { width: 100%; }
+.editor-options { display: grid; gap: 7px; }
+.editor-options label { margin: 0; white-space: normal; }
+@media (max-width: 620px) {
+  .editor-workspace { grid-template-columns: auto minmax(0, 1fr); }
+  .editor-inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
+  .editor-actions { grid-template-columns: repeat(3, 42px); }
+  .editor-inspector .piece-settings label { width: min(100%, 140px); }
+}

@@ -42,6 +42,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const gridLine = gridPattern.querySelector('path')!;
   const drawing = board.querySelector<SVGGElement>('g')!;
   const marker = board.querySelector<SVGCircleElement>('circle')!;
+  const copy = panel.querySelector<HTMLButtonElement>('#copy-piece')!;
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
@@ -58,6 +59,18 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   let selected: LayoutPiece | undefined;
   let joint: BoardPoint | undefined;
   let dragging: DragState | undefined;
+
+  function movingGroup(piece: LayoutPiece) {
+    return moveConnected.checked ? connectedPieces(piece, pieces) : [piece];
+  }
+
+  function updateCopyButton() {
+    const count = selected ? movingGroup(selected).length : 0;
+    copy.disabled = !count || pieces.length + count > pieceLimit;
+    copy.title = count > 1 ? 'Kopiuj grupę' : 'Kopiuj element';
+  }
+
+  moveConnected.addEventListener('change', updateCopyButton);
 
   function render() {
     drawing.replaceChildren();
@@ -93,6 +106,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     reliefHeight.value = selected ? String(selected.reliefHeight) : '';
     railCount.value = selected && !railCount.disabled ? String(selected.railCount) : '';
     groupSize.textContent = groupPieces.length > 1 ? `Elementy w połączonej grupie: ${groupPieces.length}` : '';
+    updateCopyButton();
     for (const button of palette) button.disabled = pieces.length >= pieceLimit;
   }
 
@@ -179,7 +193,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     joint = undefined;
     if (selected) {
       const point = boardPoint(event);
-      const group = (moveConnected.checked ? connectedPieces(selected, pieces) : [selected])
+      const group = movingGroup(selected)
         .map(piece => ({ piece, origin: { x: piece.x, y: piece.y } }));
       dragging = {
         pointerId: event.pointerId,
@@ -258,6 +272,24 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   size.addEventListener('change', updateDimensions);
   railCount.addEventListener('change', updateDimensions);
   reliefHeight.addEventListener('change', updateDimensions);
+
+  copy.addEventListener('click', () => {
+    if (!selected) return;
+    const group = movingGroup(selected);
+    if (pieces.length + group.length > pieceLimit) return;
+    const centerX = group.reduce((sum, piece) => sum + piece.x, 0) / group.length;
+    const centerY = group.reduce((sum, piece) => sum + piece.y, 0) / group.length;
+    const shiftX = centerX > width / 2 ? -10 : 10;
+    const shiftY = centerY > height / 2 ? -10 : 10;
+    const copies = group.map(piece => ({
+      ...piece, id: nextId++, x: piece.x + shiftX, y: piece.y + shiftY,
+    }));
+    pieces.push(...copies);
+    selected = copies[0];
+    joint = undefined;
+    render();
+    onChange();
+  });
 
   rotate.addEventListener('click', () => {
     if (!selected) return;

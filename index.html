@@ -21,21 +21,7 @@
             </div>
           </div>
           <section id="layout-editor" aria-labelledby="layout-editor-title" hidden>
-            <div class="editor-tools">
-              <h2 id="layout-editor-title">Plansza 2D</h2>
-              <button id="rotate-piece" type="button">Obróć o 90°</button>
-              <button id="remove-piece" type="button">Usuń element</button>
-            </div>
-            <div class="piece-settings">
-              <label>Rozmiar (%) <input id="piece-size" type="number" min="85" max="250" step="1" required disabled /></label>
-              <label hidden>Długość pasów (%) <input id="piece-length" type="number" min="25" max="250" step="1" required disabled /></label>
-              <label>Liczba pasów <input id="piece-rail-count" type="number" min="1" max="7" step="1" required disabled /></label>
-              <label>Wysokość reliefu (mm) <input id="piece-relief-height" type="number" min="1" max="30" step="1" required disabled /></label>
-              <p id="piece-group-size" class="hint" role="status"></p>
-            </div>
-            <label class="group-move"><input id="move-connected" type="checkbox" /> Przesuwaj połączoną grupę</label>
-            <label class="group-move invert-relief"><input id="invert-custom-relief" type="checkbox" /> Odwróć relief</label>
-            <label class="group-move grid-toggle"><input id="snap-layout-grid" type="checkbox" /> Przyciągaj do siatki</label>
+            <h2 id="layout-editor-title">Plansza 2D</h2>
             <p class="hint">Przeciągnij element z palety albo kliknij, by dodać go na środku. Zbliż pasujące końce, żeby je połączyć.</p>
             <div class="editor-workspace">
               <div class="piece-palette" role="group" aria-label="Elementy">
@@ -54,6 +40,31 @@
                 <g></g>
                 <circle r="1.7" class="snap-marker" />
               </svg>
+              <div class="editor-inspector" role="group" aria-label="Edycja układu">
+                <div class="editor-actions" role="group" aria-label="Operacje na zaznaczeniu">
+                  <button id="copy-piece" type="button" aria-label="Kopiuj" title="Kopiuj">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 5a1 1 0 0 0-1-1H6a2 2 0 0 0-2 2v9a1 1 0 0 0 1 1"/></svg>
+                  </button>
+                  <button id="rotate-piece" type="button" aria-label="Obróć o 90°" title="Obróć o 90°">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v5h-5M19 10a7 7 0 1 0 .5 5"/></svg>
+                  </button>
+                  <button id="remove-piece" type="button" aria-label="Usuń element" title="Usuń element">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M6 7l1 13h10l1-13M9 7V4h6v3M10 11v5m4-5v5"/></svg>
+                  </button>
+                </div>
+                <div class="piece-settings">
+                  <label>Rozmiar (%) <input id="piece-size" type="number" min="85" max="250" step="1" required disabled /></label>
+                  <label hidden>Długość pasów (%) <input id="piece-length" type="number" min="25" max="250" step="1" required disabled /></label>
+                  <label>Liczba pasów <input id="piece-rail-count" type="number" min="1" max="7" step="1" required disabled /></label>
+                  <label>Wysokość reliefu (mm) <input id="piece-relief-height" type="number" min="1" max="30" step="1" required disabled /></label>
+                  <p id="piece-group-size" class="hint" role="status"></p>
+                </div>
+                <div class="editor-options">
+                  <label class="group-move"><input id="move-connected" type="checkbox" /> Przesuwaj połączoną grupę</label>
+                  <label class="group-move"><input id="invert-custom-relief" type="checkbox" /> Odwróć relief</label>
+                  <label class="group-move"><input id="snap-layout-grid" type="checkbox" /> Przyciągaj do siatki</label>
+                </div>
+              </div>
             </div>
           </section>
           <div id="viewport"></div>
