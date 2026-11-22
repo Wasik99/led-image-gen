@@ -160,6 +160,35 @@ function createParallelArches(width: number, height: number, { arches = defaultA
   };
 }
 
+function createYarn(width: number, height: number) {
+  const columns = Math.max(3, Math.min(20, Math.round(Math.min(width, height) / 12)));
+  const pitch = Math.min(width, height) / columns;
+  const rowHeight = pitch * 1.18;
+
+  function strandDistance(x: number, y: number, ax: number, ay: number, bx: number, by: number) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+  }
+
+  return (x: number, y: number) => {
+    // Fold the stitch along its center to trace two rounded strands forming a V.
+    const column = x / pitch;
+    const row = y / rowHeight;
+    const u = Math.abs(column - Math.floor(column) - 0.5);
+    const v = row - Math.floor(row) - 0.5;
+    const distance = Math.min(
+      strandDistance(u, v, 0.028, -0.35, 0.17, -0.04),
+      strandDistance(u, v, 0.17, -0.04, 0.27, 0.34),
+    );
+    const radius = 0.15;
+    if (distance >= radius) return 0;
+    const profile = (1 + Math.cos(Math.PI * distance / radius)) / 2;
+    return 4.2 * profile * (0.94 + 0.06 * Math.cos(2 * Math.PI * (2 * v + u)));
+  };
+}
+
 export const patterns = {
   smooth: {
     label: 'Gładki',
@@ -175,6 +204,10 @@ export const patterns = {
     label: 'Losowe kwadraty',
     cellsPerTile: 5,
     createElevation: (columns, rows, { random }) => createRandomSquares(columns, rows, random),
+  },
+  yarn: {
+    label: 'Włóczka',
+    createSurface: createYarn,
   },
   parallelArches: {
     label: 'Równoległe łuki',
