@@ -136,6 +136,7 @@ select:focus-visible { outline: 2px solid var(--accent); }
 
 .piece-settings { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 14px; margin-top: 10px; }
 .piece-settings label { display: grid; gap: 3px; }
+.piece-settings .rail-setting:has(> input:disabled) { visibility: hidden; }
 .piece-settings input { width: 86px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
 .piece-settings input:focus-visible { outline: 2px solid var(--accent); }
 
