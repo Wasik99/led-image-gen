@@ -1,4 +1,4 @@
-import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHitWidth, railPath, railPaths, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
+import { boardScale, circleRadius, connectedPieces, defaultPieceHeight, pieceHitWidth, railPath, railPaths, resizeStraightPiece, snapPiece, type BoardPoint, type LayoutPiece, type PieceDimensions, type PieceKind } from './custom-layout';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const pieceLimit = 24;
@@ -16,7 +16,7 @@ interface DragState {
   maxDelta: BoardPoint;
 }
 
-function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number) {
+function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number, length?: number) {
   if (kind === 'circle') {
     const disc = document.createElementNS(svgNamespace, 'circle');
     disc.classList.add('piece-disc');
@@ -24,7 +24,7 @@ function drawPieceShape(parent: SVGElement, kind: PieceKind, railCount: number) 
     parent.append(disc);
     return;
   }
-  for (const path of railPaths({ kind, railCount })) {
+  for (const path of railPaths({ kind, railCount, length })) {
     const rail = document.createElementNS(svgNamespace, 'path');
     rail.classList.add('piece-rail');
     rail.setAttribute('d', path);
@@ -45,6 +45,8 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const rotate = panel.querySelector<HTMLButtonElement>('#rotate-piece')!;
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
+  const length = panel.querySelector<HTMLInputElement>('#piece-length')!;
+  const lengthLabel = length.closest('label')!;
   const reliefHeight = panel.querySelector<HTMLInputElement>('#piece-relief-height')!;
   const railCount = panel.querySelector<HTMLInputElement>('#piece-rail-count')!;
   const groupSize = panel.querySelector<HTMLElement>('#piece-group-size')!;
@@ -70,11 +72,11 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
       if (piece.kind !== 'circle') {
         const hitArea = document.createElementNS(svgNamespace, 'path');
         hitArea.classList.add('piece-hit-area');
-        hitArea.setAttribute('d', railPath(piece.kind));
+        hitArea.setAttribute('d', railPath(piece.kind, 0, piece.length));
         hitArea.setAttribute('stroke-width', String(pieceHitWidth(piece.railCount)));
         group.append(hitArea);
       }
-      drawPieceShape(group, piece.kind, piece.railCount);
+      drawPieceShape(group, piece.kind, piece.railCount, piece.length);
       drawing.append(group);
     }
     marker.style.display = joint ? '' : 'none';
@@ -84,6 +86,9 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     }
     remove.disabled = size.disabled = reliefHeight.disabled = !selected;
     railCount.disabled = rotate.disabled = !selected || selected.kind === 'circle';
+    length.disabled = selected?.kind !== 'straight';
+    lengthLabel.hidden = length.disabled;
+    length.value = selected?.kind === 'straight' ? String(Math.round((selected.length ?? 1) * 100)) : '';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
     reliefHeight.value = selected ? String(selected.reliefHeight) : '';
     railCount.value = selected && !railCount.disabled ? String(selected.railCount) : '';
@@ -241,6 +246,15 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     onChange();
   }
 
+  length.addEventListener('change', () => {
+    if (selected?.kind !== 'straight') return;
+    if (length.checkValidity()) {
+      resizeStraightPiece(selected, length.valueAsNumber / 100, pieces);
+      joint = undefined;
+      onChange();
+    }
+    render();
+  });
   size.addEventListener('change', updateDimensions);
   railCount.addEventListener('change', updateDimensions);
   reliefHeight.addEventListener('change', updateDimensions);

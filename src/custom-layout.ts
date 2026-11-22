@@ -10,6 +10,7 @@ export interface LayoutPiece extends BoardPoint, PieceDimensions {
   id: number;
   kind: PieceKind;
   rotation: number;
+  length?: number;
 }
 
 export const defaultPieceHeight = 8;
@@ -26,7 +27,7 @@ interface Endpoint extends BoardPoint {
 }
 
 const endpoints: Record<PieceKind, Endpoint[]> = {
-  straight: [{ x: -15, y: 0, heading: 2 }, { x: 15, y: 0, heading: 0 }],
+  straight: [{ x: -straightHalfLength, y: 0, heading: 2 }, { x: straightHalfLength, y: 0, heading: 0 }],
   corner: [{ x: -8, y: 8, heading: 1 }, { x: 8, y: -8, heading: 0 }],
   circle: [],
 };
@@ -43,15 +44,16 @@ export function pieceHitWidth(count: number) {
   return (count - 1) * railSpacing + 2 * railHalfWidth;
 }
 
-export function railPath(kind: PieceKind, offset = 0): string {
+export function railPath(kind: PieceKind, offset = 0, length = 1): string {
   const railRadius = radius + offset;
+  const halfLength = straightHalfLength * length;
   return kind === 'straight'
-    ? `M -${straightHalfLength} ${offset} H ${straightHalfLength}`
+    ? `M -${halfLength} ${offset} H ${halfLength}`
     : `M ${8 - railRadius} 8 A ${railRadius} ${railRadius} 0 0 1 8 ${8 - railRadius}`;
 }
 
-export function railPaths(piece: Pick<LayoutPiece, 'kind' | 'railCount'>): string[] {
-  return railOffsets(piece.railCount).map(offset => railPath(piece.kind, offset));
+export function railPaths(piece: Pick<LayoutPiece, 'kind' | 'railCount' | 'length'>): string[] {
+  return railOffsets(piece.railCount).map(offset => railPath(piece.kind, offset, piece.length));
 }
 
 function rotate(point: BoardPoint, turn: number): BoardPoint {
@@ -66,7 +68,7 @@ function rotate(point: BoardPoint, turn: number): BoardPoint {
 
 function pieceEndpoints(piece: LayoutPiece): Endpoint[] {
   return endpoints[piece.kind].map(end => {
-    const offset = rotate(end, piece.rotation);
+    const offset = rotate({ ...end, x: end.x * (piece.length ?? 1) }, piece.rotation);
     return {
       x: piece.x + offset.x * piece.size,
       y: piece.y + offset.y * piece.size,
@@ -77,6 +79,21 @@ function pieceEndpoints(piece: LayoutPiece): Endpoint[] {
 
 function faceEachOther(a: Endpoint, b: Endpoint) {
   return (a.heading + 2) % 4 === b.heading;
+}
+
+export function resizeStraightPiece(piece: LayoutPiece, length: number, pieces: LayoutPiece[]) {
+  const ends = pieceEndpoints(piece);
+  const anchor = ends.findIndex(end => pieces.some(other =>
+    other !== piece && other.size === piece.size && other.railCount === piece.railCount &&
+    pieceEndpoints(other).some(target => faceEachOther(end, target) &&
+      Math.hypot(end.x - target.x, end.y - target.y) < 1e-6),
+  ));
+  piece.length = length;
+  if (anchor >= 0) {
+    const moved = pieceEndpoints(piece)[anchor];
+    piece.x += ends[anchor].x - moved.x;
+    piece.y += ends[anchor].y - moved.y;
+  }
 }
 
 export function connectedPieces(selected: LayoutPiece, pieces: LayoutPiece[]): LayoutPiece[] {
@@ -125,9 +142,9 @@ export function snapPiece(piece: LayoutPiece, others: LayoutPiece[], width: numb
   return best;
 }
 
-function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[]): number {
+function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[], halfLength: number): number {
   function distanceToRail(offset: number) {
-    if (kind === 'straight') return Math.hypot(Math.max(0, Math.abs(x) - straightHalfLength), y - offset);
+    if (kind === 'straight') return Math.hypot(Math.max(0, Math.abs(x) - halfLength), y - offset);
     const r = radius + offset;
     const dx = 8 - x;
     const dy = 8 - y;
@@ -145,18 +162,19 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
   const prepared = pieces.filter(piece => piece.kind !== 'circle').map(piece => ({
     piece,
     offsets: railOffsets(piece.railCount),
-    extent: piece.size * (Math.max(straightHalfLength, 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
+    halfLength: straightHalfLength * (piece.length ?? 1),
+    extent: piece.size * (Math.max(straightHalfLength * (piece.length ?? 1), 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
     const y = (height - sampleY) / scale;
     let elevation = 0;
-    for (const { piece, offsets, extent } of prepared) {
+    for (const { piece, offsets, extent, halfLength } of prepared) {
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
-      elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets));
+      elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets, halfLength));
     }
     return elevation;
   };
