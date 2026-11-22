@@ -47,7 +47,6 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
   const remove = panel.querySelector<HTMLButtonElement>('#remove-piece')!;
   const size = panel.querySelector<HTMLInputElement>('#piece-size')!;
   const length = panel.querySelector<HTMLInputElement>('#piece-length')!;
-  const lengthLabel = length.closest('label')!;
   const reliefHeight = panel.querySelector<HTMLInputElement>('#piece-relief-height')!;
   const railCount = panel.querySelector<HTMLInputElement>('#piece-rail-count')!;
   const groupSize = panel.querySelector<HTMLElement>('#piece-group-size')!;
@@ -100,7 +99,6 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
     remove.disabled = size.disabled = reliefHeight.disabled = !selected;
     railCount.disabled = rotate.disabled = !selected || selected.kind === 'circle';
     length.disabled = selected?.kind !== 'straight';
-    lengthLabel.hidden = length.disabled;
     length.value = selected?.kind === 'straight' ? String(Math.round((selected.length ?? 1) * 100)) : '';
     size.value = selected ? String(Math.round(selected.size * 100)) : '';
     reliefHeight.value = selected ? String(selected.reliefHeight) : '';
