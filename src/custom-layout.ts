@@ -17,7 +17,6 @@ export const defaultPieceHeight = 8;
 const straightHalfLength = 15;
 const radius = 16;
 export const circleRadius = 16;
-const circleBevel = 0.7;
 const railSpacing = 3.5;
 const railHalfWidth = 1.2;
 const snapDistance = 4;
@@ -143,12 +142,10 @@ function reliefForPiece(kind: PieceKind, x: number, y: number, offsets: number[]
 
 export function createLayoutSurface(width: number, height: number, pieces: readonly LayoutPiece[]) {
   const scale = boardScale(width, height);
-  const prepared = pieces.map(piece => ({
+  const prepared = pieces.filter(piece => piece.kind !== 'circle').map(piece => ({
     piece,
     offsets: railOffsets(piece.railCount),
-    extent: piece.size * (piece.kind === 'circle'
-      ? circleRadius
-      : Math.max(straightHalfLength, 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
+    extent: piece.size * (Math.max(straightHalfLength, 8 + (piece.railCount - 1) * railSpacing / 2) + railHalfWidth),
   }));
   return (sampleX: number, sampleY: number) => {
     const x = sampleX / scale;
@@ -158,12 +155,6 @@ export function createLayoutSurface(width: number, height: number, pieces: reado
       const dx = x - piece.x;
       const dy = y - piece.y;
       if (Math.abs(dx) > extent || Math.abs(dy) > extent) continue;
-      if (piece.kind === 'circle') {
-        const edgeDistance = circleRadius - Math.hypot(dx, dy) / piece.size;
-        const rise = Math.max(0, Math.min(1, edgeDistance / circleBevel));
-        elevation = Math.max(elevation, piece.reliefHeight * rise);
-        continue;
-      }
       const local = rotate({ x: dx, y: dy }, 4 - piece.rotation);
       elevation = Math.max(elevation, piece.reliefHeight * reliefForPiece(piece.kind, local.x / piece.size, local.y / piece.size, offsets));
     }

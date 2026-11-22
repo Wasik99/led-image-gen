@@ -1,3 +1,5 @@
+import { boardScale, circleRadius } from './custom-layout';
+import { addSolidCircles } from './solid-circles';
 import { MAX_DIMENSION, MIN_TILE_SIZE } from './layout';
 import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type PatternSettings } from './patterns';
 
@@ -202,11 +204,28 @@ export function generateTiles(
     const maxSteps = Math.floor(Math.sqrt(SURFACE_CELL_BUDGET / (columns * rows)));
     const steps = Math.min(targetSteps, maxSteps);
     const sample = surface.createSurface(width, height, settings);
-    buildMesh = (column, row) => buildContinuousMesh(side, steps, (x, y) => {
-      const globalX = (column * steps + x) * side / steps;
-      const globalY = (row * steps + y) * side / steps;
-      return BASE_HEIGHT + sample(globalX, globalY);
-    });
+    const scale = boardScale(width, height);
+    const pieces = settings.customPieces ?? [];
+    const circles = pattern === 'customLayout' ? pieces.filter(piece => piece.kind === 'circle').map(piece => ({
+      x: piece.x * scale,
+      y: height - piece.y * scale,
+      radius: circleRadius * piece.size * scale,
+      height: piece.reliefHeight,
+    })) : [];
+    const flatBase = pattern === 'customLayout' && pieces.every(piece => piece.kind === 'circle')
+      ? buildTileMesh([[BASE_HEIGHT]], side) : undefined;
+    buildMesh = (column, row) => {
+      const originX = column * side;
+      const originY = row * side;
+      const base = flatBase ?? buildContinuousMesh(side, steps, (x, y) => {
+        const globalX = (column * steps + x) * side / steps;
+        const globalY = (row * steps + y) * side / steps;
+        return BASE_HEIGHT + sample(globalX, globalY);
+      });
+      const nearby = circles.map(circle => ({ ...circle, x: circle.x - originX, y: circle.y - originY }))
+        .filter(({ x, y, radius }) => x + radius > 0 && x - radius < side && y + radius > 0 && y - radius < side);
+      return nearby.length ? addSolidCircles(base.vertices, side, BASE_HEIGHT, nearby) : base;
+    };
   } else if (pattern === 'smooth') {
     const mesh = buildTileMesh([[BASE_HEIGHT]], side);
     buildMesh = () => mesh;
