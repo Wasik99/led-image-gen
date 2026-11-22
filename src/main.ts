@@ -1,5 +1,7 @@
 import { exportTiles } from './export';
 import { generateTiles, type Tile } from './geometry';
+import LayoutPreviewWorker from './layout-preview.worker?worker';
+import type { PreviewRequest, PreviewResponse } from './layout-preview.worker';
 import { createLayoutEditor } from './layout-editor';
 import { findLayout, type ImageSize } from './layout';
 import { archRoutes, defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, type WaveDirection } from './patterns';
@@ -45,7 +47,12 @@ const download = document.querySelector<HTMLButtonElement>('#download')!;
 
 let randomSeed = crypto.getRandomValues(new Uint32Array(1))[0];
 let tiles: Tile[] = [];
-let buildExportTiles: (() => Tile[]) | undefined;
+let layoutWorker: Worker | undefined;
+let workerUnavailable = false;
+let workerBusy = false;
+let queuedPreview: PreviewRequest | undefined;
+let revision = 0;
+let generationFailed = false;
 let suggestion: ImageSize | undefined;
 let preview: ReturnType<typeof createPreview> | undefined;
 
@@ -61,12 +68,73 @@ try {
 let editorUpdate: ReturnType<typeof setTimeout> | undefined;
 const editor = createLayoutEditor(editorPanel, () => {
   download.disabled = true;
+  revision++;
+  queuedPreview = undefined;
   if (editorUpdate === undefined) editorUpdate = setTimeout(renderLayout, 90);
 });
+
+// Keep only the newest waiting edit while the worker builds a mesh.
+function sendQueuedPreview() {
+  if (!layoutWorker || workerBusy || !queuedPreview) return;
+  const request = queuedPreview;
+  queuedPreview = undefined;
+  workerBusy = true;
+  layoutWorker.postMessage(request);
+}
+
+function getLayoutWorker() {
+  if (!layoutWorker && !workerUnavailable) {
+    try {
+      layoutWorker = new LayoutPreviewWorker();
+      layoutWorker.onmessage = ({ data }: MessageEvent<PreviewResponse>) => {
+        workerBusy = false;
+        const { request } = data;
+        if (request.revision === revision) {
+          if ('error' in data) {
+            displayTiles([], request.width, request.height, request.side);
+            generationFailed = true;
+            error.textContent = `Nie udało się wygenerować modelu: ${data.error}`;
+            error.hidden = false;
+          } else {
+            displayTiles(data.tiles, request.width, request.height, request.side);
+          }
+        }
+        sendQueuedPreview();
+      };
+      layoutWorker.onerror = event => {
+        event.preventDefault();
+        layoutWorker?.terminate();
+        layoutWorker = undefined;
+        workerUnavailable = true;
+        workerBusy = false;
+        renderLayout();
+      };
+    } catch {
+      workerUnavailable = true;
+    }
+  }
+  return layoutWorker;
+}
+
+function displayTiles(result: Tile[], width: number, height: number, side: number) {
+  tiles = result;
+  download.disabled = tiles.length === 0;
+  count.textContent = tiles.length ? String(tiles.length) : '—';
+  info.textContent = tiles.length
+    ? `${width} × ${height} mm · Siatka ${width / side} × ${height / side}`
+    : 'Brak podglądu dla bieżących ustawień.';
+  preview?.showTiles(tiles, width, height, side);
+}
 
 function renderLayout() {
   clearTimeout(editorUpdate);
   editorUpdate = undefined;
+  revision++;
+  queuedPreview = undefined;
+  if (generationFailed) {
+    generationFailed = false;
+    if (!tileSize.disabled) error.hidden = true;
+  }
   const width = widthInput.valueAsNumber;
   const height = heightInput.valueAsNumber;
   const side = Number(tileSize.value);
@@ -99,16 +167,15 @@ function renderLayout() {
     wave: waveSettings, random, arches, customPieces: editor.pieces,
     invertCustomRelief: invertCustomRelief.checked, grooves: grooves.checked,
   };
-  buildExportTiles = side && pattern === 'customLayout'
-    ? () => generateTiles(width, height, side, pattern, settings)
-    : undefined;
-  tiles = side ? generateTiles(width, height, side, pattern, settings, 'preview') : [];
-  download.disabled = tiles.length === 0;
-  count.textContent = tiles.length ? String(tiles.length) : '—';
-  info.textContent = tiles.length
-    ? `${width} × ${height} mm · Siatka ${width / side} × ${height / side}`
-    : 'Brak podziału dla bieżących wymiarów.';
-  preview?.showTiles(tiles, width, height, side);
+  if (side && pattern === 'customLayout' && getLayoutWorker()) {
+    queuedPreview = { revision, width, height, side, settings: { ...settings, customPieces: editor.pieces.map(piece => ({ ...piece })) } };
+    download.disabled = true;
+    count.textContent = String((width / side) * (height / side));
+    info.textContent = 'Aktualizowanie podglądu 3D…';
+    sendQueuedPreview();
+    return;
+  }
+  displayTiles(side ? generateTiles(width, height, side, pattern, settings) : [], width, height, side);
 }
 
 function update() {
@@ -179,7 +246,7 @@ applySuggestion.addEventListener('click', () => {
   update();
 });
 download.addEventListener('click', () => {
-  const blob = new Blob([exportTiles(buildExportTiles?.() ?? tiles)], { type: 'application/zip' });
+  const blob = new Blob([exportTiles(tiles)], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

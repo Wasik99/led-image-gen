@@ -7,8 +7,6 @@ export const BASE_HEIGHT = 5;
 const GROOVE_BEVEL = 0.6;
 const SURFACE_STEPS_SHORT_SIDE = 280;
 const SURFACE_CELL_BUDGET = 320_000;
-const EDITOR_PREVIEW_STEPS = 112;
-const EDITOR_PREVIEW_CELL_BUDGET = 52_000;
 
 export interface Tile {
   row: number;
@@ -189,7 +187,6 @@ export function generateTiles(
   width: number, height: number, side: number,
   pattern: PatternId = 'smooth',
   settings: PatternSettings = { wave: defaultWaveSettings, random: defaultRandomSettings },
-  quality: 'preview' | 'full' = 'full',
 ): Tile[] {
   if (!Number.isInteger(side) || side < MIN_TILE_SIZE ||
       [width, height].some((size) => size < side || size > MAX_DIMENSION || size % side !== 0)) {
@@ -202,12 +199,9 @@ export function generateTiles(
   let buildMesh: (column: number, rowFromBottom: number) => MeshData;
 
   if ('createSurface' in surface) {
-    const editorPreview = pattern === 'customLayout' && quality === 'preview';
-    const shortSideSteps = editorPreview ? EDITOR_PREVIEW_STEPS : SURFACE_STEPS_SHORT_SIDE;
-    const cellBudget = editorPreview ? EDITOR_PREVIEW_CELL_BUDGET : SURFACE_CELL_BUDGET;
-    const targetSteps = Math.ceil(shortSideSteps * side / Math.min(width, height));
+    const targetSteps = Math.ceil(SURFACE_STEPS_SHORT_SIDE * side / Math.min(width, height));
     // Keep a common spacing across seams and bound mesh size for very long panels.
-    const maxSteps = Math.floor(Math.sqrt(cellBudget / (columns * rows)));
+    const maxSteps = Math.floor(Math.sqrt(SURFACE_CELL_BUDGET / (columns * rows)));
     const steps = Math.min(targetSteps, maxSteps);
     const sample = surface.createSurface(width, height, settings);
     const scale = boardScale(width, height);
@@ -233,7 +227,7 @@ export function generateTiles(
       });
       const nearby = circles.map(circle => ({ ...circle, x: circle.x - originX, y: circle.y - originY }))
         .filter(({ x, y, radius }) => x + radius > 0 && x - radius < side && y + radius > 0 && y - radius < side);
-      return nearby.length ? applySolidCircles(base.vertices, side, referenceHeight, nearby, inverted, editorPreview ? 96 : 192) : base;
+      return nearby.length ? applySolidCircles(base.vertices, side, referenceHeight, nearby, inverted) : base;
     };
   } else if (pattern === 'smooth') {
     const mesh = buildTileMesh([[BASE_HEIGHT]], side);
