@@ -6,6 +6,7 @@ import { defaultRandomSettings, defaultWaveSettings, patterns, type PatternId, t
 export const BASE_HEIGHT = 5;
 const GROOVE_BEVEL = 0.6;
 const SURFACE_STEPS_SHORT_SIDE = 280;
+const CUSTOM_CURVE_STEPS_SHORT_SIDE = 420;
 const SURFACE_CELL_BUDGET = 320_000;
 
 export interface Tile {
@@ -199,13 +200,15 @@ export function generateTiles(
   let buildMesh: (column: number, rowFromBottom: number) => MeshData;
 
   if ('createSurface' in surface) {
-    const targetSteps = Math.ceil(SURFACE_STEPS_SHORT_SIDE * side / Math.min(width, height));
+    const pieces = settings.customPieces ?? [];
+    const hasCustomCurve = pattern === 'customLayout' && pieces.some(piece => piece.kind === 'corner');
+    const shortSideSteps = hasCustomCurve ? CUSTOM_CURVE_STEPS_SHORT_SIDE : SURFACE_STEPS_SHORT_SIDE;
+    const targetSteps = Math.ceil(shortSideSteps * side / Math.min(width, height));
     // Keep a common spacing across seams and bound mesh size for very long panels.
     const maxSteps = Math.floor(Math.sqrt(SURFACE_CELL_BUDGET / (columns * rows)));
     const steps = Math.min(targetSteps, maxSteps);
     const sample = surface.createSurface(width, height, settings);
     const scale = boardScale(width, height);
-    const pieces = settings.customPieces ?? [];
     const inverted = pattern === 'customLayout' && Boolean(settings.invertCustomRelief);
     const referenceHeight = BASE_HEIGHT + (inverted ? Math.max(0, ...pieces.map(piece => piece.reliefHeight)) : 0);
     const circles = pattern === 'customLayout' ? pieces.filter(piece => piece.kind === 'circle').map(piece => ({
