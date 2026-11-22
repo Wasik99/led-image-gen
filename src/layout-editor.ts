@@ -95,7 +95,7 @@ export function createLayoutEditor(panel: HTMLElement, onChange: () => void) {
 
   function add(kind: PieceKind, point: BoardPoint) {
     if (pieces.length >= pieceLimit) return;
-    selected = { id: nextId++, kind, rotation: 0, size: 1, railCount: 5, reliefHeight: defaultPieceHeight, ...point };
+    selected = { id: nextId++, kind, rotation: 0, size: 1.25, railCount: 5, reliefHeight: defaultPieceHeight, ...point };
     pieces.push(selected);
     move(selected, point);
   }
